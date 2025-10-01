@@ -94,13 +94,17 @@ Generate the following in ONE response:
 3. KEY SCENES: Extract exactly ${input.scenes_per_episode} visually impactful scenes
    For EACH scene provide:
    - Scene ID (scene_1, scene_2, etc.)
-   - Description: ONE SENTENCE summarizing what happens (viewer-facing narrative, e.g., "Yuki discovers her ice powers in the school courtyard.")
+   - Description: ONE SENTENCE story narrative for viewers to read
+     Example: "Yuki discovers her ice powers during lunch break."
+     This is VIEWER TEXT - NOT technical details, camera angles, or art style
    - Characters present
    - Setting/location (brief, e.g., "school courtyard")
    - Mood/atmosphere
    - Visual elements
    - Dialogue (if any, character name + line)
-   - COMPLETE IMAGE_PROMPT ready for image generation API (this is SEPARATE from description - highly detailed technical prompt)
+   - COMPLETE IMAGE_PROMPT: Detailed technical prompt ONLY for image generator
+     This is TECHNICAL PROMPT - Include character appearance, pose, setting details, lighting, art style
+     This is SEPARATE from description - viewers never see this
 
 IMAGE_PROMPT REQUIREMENTS (CRITICAL):
 Each image_prompt must be a detailed, complete prompt ready to send directly to the image API.
@@ -111,6 +115,14 @@ Include:
 - ${input.style} anime style specifications
 - Professional quality indicators
 ${input.comicMode ? '- COMIC MODE: Specific text bubble placements with exact dialogue to render' : ''}
+
+CHARACTER CONSISTENCY REQUIREMENTS (CRITICAL):
+- Use IDENTICAL character descriptions in ALL ${input.scenes_per_episode} scene image_prompts
+- Include exact color codes (e.g., "red hair #DC143C", "blue eyes #1E90FF")
+- Repeat outfit details in EVERY image prompt verbatim
+- Use the SAME descriptive phrases across all scenes
+Example: If Scene 1 says "short spiky blue hair", ALL scenes must say "short spiky blue hair"
+This ensures visual consistency across all generated images.
 
 Output MUST be valid JSON in this EXACT format:
 {
@@ -134,7 +146,8 @@ Output MUST be valid JSON in this EXACT format:
       "mood": "Emotional atmosphere",
       "visual_elements": ["element1", "element2"],
       "dialogue": "Character Name: Their dialogue line",
-      "image_prompt": "COMPLETE detailed technical prompt for image generation: masterpiece, high quality ${input.comicMode ? 'comic manga panel with speech bubbles' : 'anime art'}, [character name] with [full appearance details] wearing [outfit details], [specific action/pose], [detailed setting], [lighting], [mood], ${input.style} style${input.comicMode ? ', speech bubble at [position] with text [exact dialogue], sound effect [text] at [position]' : ''}, professional anime production, vibrant colors"
+      "image_prompt": "COMPLETE detailed technical prompt for image generation: masterpiece, high quality ${input.comicMode ? 'comic manga panel with speech bubbles' : 'anime art'}, [character name] with [full appearance details] wearing [outfit details], [specific action/pose], [detailed setting], [lighting], [mood], ${input.style} style${input.comicMode ? ', speech bubble at [position] with text [exact dialogue], sound effect [text] at [position]' : ''}, professional anime production, vibrant colors",
+      "negative_prompt": "blurry, low quality, deformed, disfigured, ugly, bad anatomy, extra limbs, watermark, signature, amateur, inconsistent style, multiple art styles, distorted faces, mutated hands"
     }
   ]
 }
@@ -374,12 +387,30 @@ Visual Elements: ${scene.visual_elements.join(', ')}
 EXPECTED CHARACTERS:
 ${charDescriptions}
 
-Please evaluate:
-1. CHARACTER CONSISTENCY (0-1): Do characters match their described appearance?
-2. SCENE ACCURACY (0-1): Does the image match the scene description?
-3. QUALITY (0-1): Is this professional-quality anime art?
-4. List any issues or inconsistencies
-5. Provide specific suggestions for improvement if needed
+STRICT EVALUATION CRITERIA:
+1. CHARACTER CONSISTENCY (0-1): Do characters match their described appearance EXACTLY?
+   - Hair color, style, and length must match
+   - Eye color and shape must match
+   - Outfit colors and style must match
+   - Body proportions and features must match
+   Score 0.9+ only if nearly perfect match
+
+2. SCENE ACCURACY (0-1): Does the image match the scene description PRECISELY?
+   - Setting and location must be correct
+   - Character actions and poses must match
+   - Mood and atmosphere must be conveyed
+   - Visual elements must be present
+   Score 0.9+ only if scene is accurately depicted
+
+3. QUALITY (0-1): Is this professional anime production standard?
+   - Clean linework and proper anatomy
+   - Appropriate lighting and shading
+   - Vibrant colors and good composition
+   - No artifacts, distortions, or errors
+   Score 0.9+ only for publication-quality art
+
+4. List ALL issues found, even minor ones
+5. Provide specific, actionable suggestions for improvement
 
 Output MUST be valid JSON:
 {
@@ -387,11 +418,13 @@ Output MUST be valid JSON:
   "character_consistency_score": 0.0 to 1.0,
   "scene_accuracy_score": 0.0 to 1.0,
   "quality_score": 0.0 to 1.0,
-  "issues": ["list of any issues found"],
+  "issues": ["list of ALL issues found"],
   "suggestions": "specific improvements needed"
 }
 
-Be objective but not overly critical. The image should pass if it's reasonable quality and mostly matches requirements.`;
+PASSING THRESHOLD: Average score must be ≥0.75 to pass (not lenient).
+Only pass images that would be acceptable in a published manga or anime.
+Be thorough and honest in your assessment - users want HIGH quality results.`;
   },
 
   storyIdea: ({ genre, tone, complexity, keywords }: StoryIdeaParams) => {

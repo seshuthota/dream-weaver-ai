@@ -37,6 +37,7 @@ export interface SceneWithPrompt extends Scene {
 
 export interface ImagePrompt {
   positive_prompt: string;
+  negative_prompt?: string;
   scene_id: string;
   technical_params?: {
     aspect_ratio?: string;
