@@ -80,7 +80,7 @@ export interface GenerationResult {
 }
 
 export interface GenerationProgress {
-  stage: 'story' | 'prompts' | 'image' | 'verification' | 'complete' | 'error';
+  stage: 'story' | 'prompts' | 'image' | 'verification' | 'images_complete' | 'complete' | 'error';
   progress: number;
   currentScene?: number;
   totalScenes?: number;

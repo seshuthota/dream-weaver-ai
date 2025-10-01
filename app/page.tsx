@@ -73,13 +73,13 @@ export default function Home() {
               progressRef.current = data;
               setProgress(data);
 
-              // If complete, set the final result and save to history
-              if (data.stage === 'complete' && data.data) {
+              // Show results as soon as images are ready (don't wait for verification)
+              if ((data.stage === 'images_complete' || data.stage === 'complete') && data.data) {
                 const generationResult = data.data as GenerationResult;
                 setResult(generationResult);
 
-                // Save to history
-                if (currentInput) {
+                // Save to history only when fully complete
+                if (data.stage === 'complete' && currentInput) {
                   saveToHistory(currentInput, generationResult);
                   setHistoryCount(getHistoryCount());
                 }

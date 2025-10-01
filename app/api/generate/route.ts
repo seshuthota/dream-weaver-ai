@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import type { AnimeInput, GenerationProgress } from '@/types';
+import type { AnimeInput, GenerationProgress, Scene } from '@/types';
 import {
   generateCompleteStory,
   generateImage,
@@ -106,6 +106,8 @@ export async function POST(request: NextRequest) {
 
         // Process results and save images
         const generatedScenes: any[] = [];
+        const tempDataForVerification: string[] = [];
+        
         for (let i = 0; i < imageResults.length; i++) {
           const result = imageResults[i];
           const scene = scenes[i];
@@ -120,6 +122,7 @@ export async function POST(request: NextRequest) {
               error: result.reason?.message || 'Generation failed',
               attempts: 0,
             });
+            tempDataForVerification.push('');
             continue;
           }
 
@@ -135,6 +138,7 @@ export async function POST(request: NextRequest) {
               error: imageResult?.error || 'Generation failed',
               attempts,
             });
+            tempDataForVerification.push('');
             continue;
           }
 
@@ -149,54 +153,102 @@ export async function POST(request: NextRequest) {
             dialogue: scene.dialogue,
             setting: scene.setting,
             attempts,
-            tempData: imageResult.imageData, // Keep for verification
           });
+          tempDataForVerification.push(imageResult.imageData!);
         }
 
-        // PARALLEL VERIFICATION - All at once!
+        // SEND RESULTS IMMEDIATELY - Don't wait for verification!
+        const preliminaryResult = {
+          script,
+          characters,
+          scenes: generatedScenes,
+          metadata: {
+            success: true,
+            total_scenes: totalScenes,
+            passed_verification: 0,
+            needs_review: 0,
+            generation_time_seconds: 0,
+            timestamp: new Date().toISOString(),
+            verification_pending: true,
+          },
+        };
+
+        // Save preliminary result
+        const resultFilename = generateResultFilename();
+        saveResultJson(preliminaryResult, resultFilename);
+
+        sendProgress({
+          stage: 'images_complete',
+          progress: 80,
+          message: '✅ All images ready! Starting optional quality verification...',
+          data: preliminaryResult,
+        });
+
+        // OPTIONAL VERIFICATION - Run in background, don't block results
         sendProgress({
           stage: 'verification',
-          progress: 80,
+          progress: 85,
           totalScenes,
-          message: `🔍 Verifying all ${totalScenes} images in parallel...`,
+          message: `🔍 Running quality checks (optional)...`,
         });
 
         let completedVerifications = 0;
 
-        // Verify all images in parallel
-        const verifyPromises = generatedScenes.map(async (genScene, index) => {
-          if (!genScene.tempData) return null; // Skip failed generations
+        // Start verification but with timeout protection
+        const verifyWithTimeout = async (genScene: any, scene: Scene, index: number) => {
+          if (!tempDataForVerification[index]) return null;
+          
+          try {
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Verification timeout')), 15000)
+            );
+            
+            const verifyPromise = verifyImage(tempDataForVerification[index], scene, characters, apiKey);
+            
+            const verification = await Promise.race([verifyPromise, timeoutPromise]);
+            
+            completedVerifications++;
+            sendProgress({
+              stage: 'verification',
+              progress: 85 + (completedVerifications / totalScenes) * 10,
+              currentScene: completedVerifications,
+              totalScenes,
+              message: `✅ Quality check ${completedVerifications}/${totalScenes}`,
+            });
 
-          const scene = scenes[index];
-          const verification = await verifyImage(genScene.tempData, scene, characters, apiKey);
-
-          completedVerifications++;
-          sendProgress({
-            stage: 'verification',
-            progress: 80 + (completedVerifications / totalScenes) * 15,
-            currentScene: completedVerifications,
-            totalScenes,
-            message: `✅ Verification ${completedVerifications}/${totalScenes} complete`,
-          });
-
-          return verification;
-        });
-
-        // Wait for all verifications
-        const verifications = await Promise.allSettled(verifyPromises);
-
-        // Add verifications to scenes and clean up temp data
-        for (let i = 0; i < generatedScenes.length; i++) {
-          const verifyResult = verifications[i];
-          if (verifyResult.status === 'fulfilled' && verifyResult.value) {
-            generatedScenes[i].verification = verifyResult.value;
+            return verification;
+          } catch (error) {
+            completedVerifications++;
+            return null; // Skip failed verifications silently
           }
-          // Remove temp data
-          delete generatedScenes[i].tempData;
+        };
+
+        const verifyPromises = generatedScenes.map((genScene, index) =>
+          verifyWithTimeout(genScene, scenes[index], index)
+        );
+
+        // Wait for verifications with overall timeout
+        const verificationTimeout = new Promise((resolve) => 
+          setTimeout(() => resolve([]), 30000) // 30s max for all verifications
+        );
+        
+        const verificationsOrTimeout = await Promise.race([
+          Promise.allSettled(verifyPromises),
+          verificationTimeout
+        ]);
+
+        // Add verifications if completed
+        if (Array.isArray(verificationsOrTimeout)) {
+          for (let i = 0; i < generatedScenes.length; i++) {
+            const verifyResult = verificationsOrTimeout[i];
+            if (verifyResult && verifyResult.status === 'fulfilled' && verifyResult.value) {
+              generatedScenes[i].verification = verifyResult.value;
+            }
+          }
         }
 
-        // Final result
-        const result = {
+        // Final result with verification data (if available)
+        const finalResult = {
           script,
           characters,
           scenes: generatedScenes,
@@ -205,20 +257,20 @@ export async function POST(request: NextRequest) {
             total_scenes: totalScenes,
             passed_verification: generatedScenes.filter((s) => s.verification?.passed).length,
             needs_review: generatedScenes.filter((s) => !s.verification?.passed).length,
-            generation_time_seconds: 0, // Calculated by frontend
+            generation_time_seconds: 0,
             timestamp: new Date().toISOString(),
+            verification_completed: Array.isArray(verificationsOrTimeout),
           },
         };
 
-        // Save result JSON to disk
-        const resultFilename = generateResultFilename();
-        saveResultJson(result, resultFilename);
+        // Update saved result
+        saveResultJson(finalResult, resultFilename);
 
         sendProgress({
           stage: 'complete',
           progress: 100,
           message: '🎉 Anime generation complete!',
-          data: result,
+          data: finalResult,
         });
 
         controller.close();

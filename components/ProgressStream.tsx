@@ -36,7 +36,11 @@ export function ProgressStream({ isGenerating, progress }: ProgressStreamProps) 
   const getStageStatus = (stageId: string) => {
     if (!progress) return 'pending';
     if (progress.stage === 'error') return 'error';
-    if (progress.stage === 'complete') return 'completed';
+    
+    // Images complete or fully complete - show all stages as completed
+    if (progress.stage === 'complete' || progress.stage === 'images_complete') {
+      return 'completed';
+    }
 
     const stageIndex = stages.findIndex(s => s.id === stageId);
     const currentIndex = stages.findIndex(s => s.id === progress.stage);
@@ -50,7 +54,9 @@ export function ProgressStream({ isGenerating, progress }: ProgressStreamProps) 
     <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl font-semibold text-white">
-          {progress?.stage === 'complete' ? '🎉 Generation Complete!' : '⚡ Generating Your Anime...'}
+          {progress?.stage === 'complete' ? '🎉 Generation Complete!' : 
+           progress?.stage === 'images_complete' ? '✅ Images Ready! (Quality check running...)' :
+           '⚡ Generating Your Anime...'}
         </h3>
         {isGenerating && (
           <div className="text-sm text-gray-400">
