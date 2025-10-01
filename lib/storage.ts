@@ -3,14 +3,30 @@ import path from 'path';
 import { GenerationResult } from '@/types';
 
 const OUTPUT_DIR = path.join(process.cwd(), 'public', 'generated');
+const FALLBACK_DIR = path.join(process.env.TMPDIR || '/tmp', 'dream-weaver-generated');
+
+function ensureDir(dir: string): void {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+}
+
+function getWritableDir(): { dir: string; servedFromPublic: boolean } {
+  try {
+    ensureDir(OUTPUT_DIR);
+    fs.accessSync(OUTPUT_DIR, fs.constants.W_OK);
+    return { dir: OUTPUT_DIR, servedFromPublic: true };
+  } catch {
+    ensureDir(FALLBACK_DIR);
+    return { dir: FALLBACK_DIR, servedFromPublic: false };
+  }
+}
 
 /**
  * Ensures the output directory exists
  */
 export function ensureOutputDir(): void {
-  if (!fs.existsSync(OUTPUT_DIR)) {
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  }
+  getWritableDir();
 }
 
 /**
@@ -20,7 +36,7 @@ export function ensureOutputDir(): void {
  * @returns The public URL path to the saved image
  */
 export function saveImage(base64Data: string, filename: string): string {
-  ensureOutputDir();
+  const { dir, servedFromPublic } = getWritableDir();
 
   // Remove data URL prefix if present
   const base64Image = base64Data.replace(/^data:image\/\w+;base64,/, '');
@@ -29,11 +45,17 @@ export function saveImage(base64Data: string, filename: string): string {
   const imageBuffer = Buffer.from(base64Image, 'base64');
 
   // Save to disk
-  const filepath = path.join(OUTPUT_DIR, filename);
-  fs.writeFileSync(filepath, imageBuffer);
+  try {
+    const filepath = path.join(dir, filename);
+    fs.writeFileSync(filepath, imageBuffer);
+    if (servedFromPublic) {
+      return `/generated/${filename}`;
+    }
+  } catch (error) {
+    console.error('Error saving image to disk, falling back to data URL:', error);
+  }
 
-  // Return public URL
-  return `/generated/${filename}`;
+  return `data:image/png;base64,${base64Image}`;
 }
 
 /**
@@ -42,10 +64,13 @@ export function saveImage(base64Data: string, filename: string): string {
  * @param filename - JSON filename
  */
 export function saveResultJson(result: GenerationResult, filename: string): void {
-  ensureOutputDir();
-
-  const filepath = path.join(OUTPUT_DIR, filename);
-  fs.writeFileSync(filepath, JSON.stringify(result, null, 2));
+  try {
+    const { dir } = getWritableDir();
+    const filepath = path.join(dir, filename);
+    fs.writeFileSync(filepath, JSON.stringify(result, null, 2));
+  } catch (error) {
+    console.error('Error saving result JSON:', error);
+  }
 }
 
 /**
