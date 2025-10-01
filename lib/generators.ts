@@ -1,6 +1,8 @@
 import { createOpenRouterClient } from './openrouter';
 import { MODELS } from './config/models';
 import { PROMPTS } from './config/prompts';
+import { extractJSON } from './utils';
+import { getCharacterDescriptions } from './promptCache';
 import type {
   AnimeInput,
   CharacterProfile,
@@ -27,14 +29,11 @@ export async function generateCompleteStory(
   const response = await client.generateText(MODELS.story.model, prompt);
 
   try {
-    let text = response;
-    if (text.includes('```json')) {
-      text = text.split('```json')[1].split('```')[0];
-    } else if (text.includes('```')) {
-      text = text.split('```')[1].split('```')[0];
-    }
-
-    const parsed = JSON.parse(text.trim());
+    const parsed = extractJSON<{
+      characters: Record<string, CharacterProfile>;
+      script: string;
+      scenes: SceneWithPrompt[];
+    }>(response);
 
     // Validate structure
     if (!parsed.characters || !parsed.script || !parsed.scenes) {
@@ -87,16 +86,10 @@ Be creative and detailed, but ensure consistency for character recognition acros
   const response = await client.generateText(MODELS.story.model, prompt);
 
   try {
-    let text = response;
-    if (text.includes('```json')) {
-      text = text.split('```json')[1].split('```')[0];
-    } else if (text.includes('```')) {
-      text = text.split('```')[1].split('```')[0];
-    }
-    return JSON.parse(text.trim());
+    return extractJSON<Record<string, CharacterProfile>>(response);
   } catch (error) {
     console.error('Error parsing character profiles:', error);
-    return {};
+    throw new Error('Failed to generate character profiles. Please try again.');
   }
 }
 
@@ -172,16 +165,10 @@ Choose the most visually impactful and story-important scenes.`;
   const response = await client.generateText(MODELS.story.model, prompt);
 
   try {
-    let text = response;
-    if (text.includes('```json')) {
-      text = text.split('```json')[1].split('```')[0];
-    } else if (text.includes('```')) {
-      text = text.split('```')[1].split('```')[0];
-    }
-    return JSON.parse(text.trim());
+    return extractJSON<Scene[]>(response);
   } catch (error) {
     console.error('Error parsing scenes:', error);
-    return [];
+    throw new Error('Failed to extract key scenes. Please try again.');
   }
 }
 
@@ -192,17 +179,8 @@ export async function generateImagePrompt(
   apiKey: string,
   comicMode?: boolean
 ): Promise<ImagePrompt> {
-  const characterDescriptions = scene.characters_present
-    .map((charName) => {
-      const char = characters[charName];
-      if (!char) return `${charName}: (character details not found)`;
-      let desc = `${charName}: ${char.appearance}, wearing ${char.outfit}`;
-      if (char.visual_markers) {
-        desc += `, distinctive features: ${char.visual_markers}`;
-      }
-      return desc;
-    })
-    .join('\n');
+  // Use cached character descriptions to reduce token usage
+  const characterDescriptions = getCharacterDescriptions(scene.characters_present, characters);
 
   // Style-specific enhancements
   const styleGuides: Record<string, string> = {
@@ -320,17 +298,10 @@ Make the prompt natural-sounding but extremely detailed and specific. Include al
   const response = await client.generateText(MODELS.prompt.model, prompt);
 
   try {
-    let text = response;
-    if (text.includes('```json')) {
-      text = text.split('```json')[1].split('```')[0];
-    } else if (text.includes('```')) {
-      text = text.split('```')[1].split('```')[0];
-    }
-    const promptData: ImagePrompt = JSON.parse(text.trim());
-    return promptData;
+    return extractJSON<ImagePrompt>(response);
   } catch (error) {
     console.error('Error parsing prompt:', error);
-    // Fallback
+    // Fallback to using raw response
     return {
       positive_prompt: response,
       scene_id: scene.id,
@@ -340,11 +311,22 @@ Make the prompt natural-sounding but extremely detailed and specific. Include al
 }
 
 export async function generateImage(
-  prompt: string,
+  prompt: string | ImagePrompt,
   apiKey: string
 ): Promise<{ success: boolean; imageData?: string; error?: string }> {
   const client = createOpenRouterClient(apiKey);
-  return await client.generateImage(MODELS.image.model, prompt);
+
+  // Handle both string prompts and ImagePrompt objects
+  if (typeof prompt === 'string') {
+    return await client.generateImage(MODELS.image.model, prompt);
+  }
+
+  // Use ImagePrompt with negative prompt support
+  return await client.generateImage(
+    MODELS.image.model,
+    prompt.positive_prompt,
+    prompt.negative_prompt
+  );
 }
 
 export async function verifyImage(
@@ -353,12 +335,8 @@ export async function verifyImage(
   characters: Record<string, CharacterProfile>,
   apiKey: string
 ): Promise<VerificationResult> {
-  const charDescriptions = scene.characters_present
-    .map((charName) => {
-      const char = characters[charName];
-      return char ? `${charName}: ${char.appearance}, ${char.outfit}` : charName;
-    })
-    .join('\n');
+  // Use cached character descriptions to reduce token usage
+  const charDescriptions = getCharacterDescriptions(scene.characters_present, characters);
 
   const verificationPrompt = PROMPTS.verification({ scene, characters });
   const client = createOpenRouterClient(apiKey);
@@ -370,42 +348,7 @@ export async function verifyImage(
       throw new Error('Invalid response from verification API');
     }
 
-    let text = response;
-    
-    // Try to extract JSON from various formats
-    if (text.includes('```json')) {
-      const parts = text.split('```json');
-      if (parts.length > 1) {
-        text = parts[1].split('```')[0];
-      }
-    } else if (text.includes('```')) {
-      const parts = text.split('```');
-      if (parts.length > 1) {
-        text = parts[1].split('```')[0];
-      }
-    }
-
-    // Clean up text before parsing
-    text = text.trim();
-    
-    // If text doesn't start with {, try to find JSON object
-    if (!text.startsWith('{')) {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        text = jsonMatch[0];
-      } else {
-        throw new Error('No JSON object found in response');
-      }
-    }
-
-    let result: VerificationResult;
-    try {
-      result = JSON.parse(text);
-    } catch (parseError) {
-      console.error('JSON parse error:', parseError);
-      console.error('Attempted to parse:', text.substring(0, 200));
-      throw new Error(`Failed to parse verification JSON: ${parseError}`);
-    }
+    const result = extractJSON<VerificationResult>(response);
 
     // Validate required fields
     if (typeof result.character_consistency_score !== 'number' ||
@@ -427,7 +370,7 @@ export async function verifyImage(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error verifying image:', errorMessage);
-    
+
     // Return neutral pass on error - verification is optional
     return {
       passed: true,

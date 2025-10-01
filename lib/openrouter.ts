@@ -29,8 +29,18 @@ export class OpenRouterClient {
     return response.choices[0]?.message?.content || '';
   }
 
-  async generateImage(model: string, prompt: string): Promise<{ success: boolean; imageData?: string; error?: string }> {
+  async generateImage(
+    model: string,
+    prompt: string,
+    negativePrompt?: string
+  ): Promise<{ success: boolean; imageData?: string; error?: string }> {
     try {
+      // Construct full prompt with negative prompt if provided
+      let fullPrompt = prompt;
+      if (negativePrompt) {
+        fullPrompt += `\n\nNEGATIVE PROMPT (avoid these): ${negativePrompt}`;
+      }
+
       const response = await fetch(`${API_CONFIG.openrouter.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -40,7 +50,7 @@ export class OpenRouterClient {
         },
         body: JSON.stringify({
           model,
-          messages: [{ role: 'user', content: prompt }],
+          messages: [{ role: 'user', content: fullPrompt }],
           modalities: ['image', 'text']
         })
       });

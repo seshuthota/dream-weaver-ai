@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import pLimit from 'p-limit';
 import type { AnimeInput, GenerationProgress, Scene } from '@/types';
 import {
   generateCompleteStory,
@@ -10,8 +11,10 @@ import {
   saveResultJson,
   generateImageFilename,
   generateResultFilename,
+  cleanupPartialFiles,
 } from '@/lib/storage';
 import { getApiKey, requireApiKey } from '@/lib/apiKeyManager';
+import { calculateCost, formatCost } from '@/lib/utils';
 
 export async function POST(request: NextRequest) {
   const input: AnimeInput = await request.json();
@@ -50,48 +53,77 @@ export async function POST(request: NextRequest) {
 
         const { characters, script, scenes } = await generateCompleteStory(input, apiKey);
 
+        const totalScenes = scenes.length;
+        const estimatedCost = calculateCost(totalScenes);
+
         sendProgress({
           stage: 'story',
           progress: 40,
-          message: `✅ Story complete! Generated ${scenes.length} scenes with prompts`,
-          data: { characters, script, scenes },
+          message: `✅ Story complete! Generated ${totalScenes} scenes with prompts`,
+          data: { characters, script, scenes, estimatedCost },
         });
 
-        const totalScenes = scenes.length;
 
         // PARALLEL IMAGE GENERATION - All at once!
         sendProgress({
           stage: 'image',
           progress: 45,
           totalScenes,
-          message: `🎨 Generating all ${totalScenes} images in parallel...`,
+          message: `🎨 Generating all ${totalScenes} images in parallel (est. ${formatCost(estimatedCost)})...`,
         });
 
         let completedImages = 0;
 
-        // Generate all images in parallel with progress tracking
-        const imagePromises = scenes.map(async (scene, index) => {
+        // Rate limiting: Max 3 concurrent image generations to avoid overwhelming the API
+        const limit = pLimit(3);
+
+        // Generate all images with controlled concurrency and progress tracking
+        const imagePromises = scenes.map((scene, index) => limit(async () => {
           const sceneNum = index + 1;
 
-          // Attempt generation with retries
+          // Construct ImagePrompt object with negative prompt support
+          const imagePrompt = {
+            positive_prompt: scene.image_prompt,
+            negative_prompt: scene.negative_prompt,
+            scene_id: scene.id,
+            technical_params: {}
+          };
+
+          // Attempt generation with retries and smart prompt variation
           let imageResult;
           let attempts = 0;
           const maxAttempts = 3;
 
           while (attempts < maxAttempts) {
-            imageResult = await generateImage(scene.image_prompt, apiKey);
+            // Add quality boosters and variations on retry attempts
+            let modifiedPrompt = { ...imagePrompt };
+
+            if (attempts === 1) {
+              // First retry: Add quality boosters
+              modifiedPrompt.positive_prompt += ', ultra detailed, 8k masterpiece, perfect composition, award winning';
+              console.log(`Retry ${attempts} for ${scene.id}: Adding quality boosters`);
+            } else if (attempts === 2) {
+              // Second retry: Add alternative angle and more quality keywords
+              modifiedPrompt.positive_prompt += ', ultra detailed, 8k masterpiece, alternative angle, different perspective, professional lighting';
+              console.log(`Retry ${attempts} for ${scene.id}: Adding angle variation and quality keywords`);
+            }
+
+            imageResult = await generateImage(modifiedPrompt, apiKey);
             if (imageResult.success) break;
             attempts++;
           }
 
-          // Track completion
+          // Track completion with accurate percentage
           completedImages++;
+          const imageProgress = (completedImages / totalScenes) * 100;
+          const overallProgress = 40 + (imageProgress * 0.40); // Images are 40-80% of total
+
           sendProgress({
             stage: 'image',
-            progress: 45 + (completedImages / totalScenes) * 35,
+            progress: Math.round(overallProgress),
             currentScene: completedImages,
             totalScenes,
-            message: `✅ Image ${completedImages}/${totalScenes} complete`,
+            message: `✅ Image ${completedImages}/${totalScenes} complete (${Math.round(imageProgress)}%)`,
           });
 
           return {
@@ -99,7 +131,7 @@ export async function POST(request: NextRequest) {
             imageResult,
             attempts: attempts + 1,
           };
-        });
+        }));
 
         // Wait for all images to complete
         const imageResults = await Promise.allSettled(imagePromises);
@@ -107,7 +139,8 @@ export async function POST(request: NextRequest) {
         // Process results and save images
         const generatedScenes: any[] = [];
         const tempDataForVerification: string[] = [];
-        
+        const resultFilename = generateResultFilename();
+
         for (let i = 0; i < imageResults.length; i++) {
           const result = imageResults[i];
           const scene = scenes[i];
@@ -155,9 +188,29 @@ export async function POST(request: NextRequest) {
             attempts,
           });
           tempDataForVerification.push(imageResult.imageData!);
+
+          // Incremental save after each successful image
+          const partialResult = {
+            script,
+            characters,
+            scenes: generatedScenes,
+            metadata: {
+              success: true,
+              total_scenes: totalScenes,
+              passed_verification: 0,
+              needs_review: 0,
+              generation_time_seconds: 0,
+              timestamp: new Date().toISOString(),
+              partial: true,
+              completed_scenes: generatedScenes.length,
+            },
+          };
+          saveResultJson(partialResult, `${resultFilename}_partial_${generatedScenes.length}.json`);
         }
 
         // SEND RESULTS IMMEDIATELY - Don't wait for verification!
+        const actualCost = calculateCost(generatedScenes.filter(s => s.image_url).length);
+
         const preliminaryResult = {
           script,
           characters,
@@ -170,11 +223,12 @@ export async function POST(request: NextRequest) {
             generation_time_seconds: 0,
             timestamp: new Date().toISOString(),
             verification_pending: true,
+            estimated_cost: estimatedCost,
+            actual_cost: actualCost,
           },
         };
 
-        // Save preliminary result
-        const resultFilename = generateResultFilename();
+        // Save preliminary result (using the same filename as incremental saves)
         saveResultJson(preliminaryResult, resultFilename);
 
         sendProgress({
@@ -211,12 +265,15 @@ export async function POST(request: NextRequest) {
             const verification = await Promise.race([verifyPromise, timeoutPromise]);
             
             completedVerifications++;
+            const verifyProgress = (completedVerifications / totalScenes) * 100;
+            const overallProgress = 80 + (verifyProgress * 0.15); // Verification is 80-95% of total
+
             sendProgress({
               stage: 'verification',
-              progress: 85 + (completedVerifications / totalScenes) * 10,
+              progress: Math.round(overallProgress),
               currentScene: completedVerifications,
               totalScenes,
-              message: `✅ Quality check ${completedVerifications}/${totalScenes}`,
+              message: `✅ Quality check ${completedVerifications}/${totalScenes} (${Math.round(verifyProgress)}%)`,
             });
 
             return verification;
@@ -224,11 +281,13 @@ export async function POST(request: NextRequest) {
             const errorMsg = error instanceof Error ? error.message : 'Unknown error';
             console.log(`Verification failed for scene ${index}: ${errorMsg}`);
             completedVerifications++;
-            
+            const verifyProgress = (completedVerifications / totalScenes) * 100;
+            const overallProgress = 80 + (verifyProgress * 0.15);
+
             // Still send progress update even on failure
             sendProgress({
               stage: 'verification',
-              progress: 85 + (completedVerifications / totalScenes) * 10,
+              progress: Math.round(overallProgress),
               currentScene: completedVerifications,
               totalScenes,
               message: `⚠️ Quality check ${completedVerifications}/${totalScenes} (skipped)`,
@@ -275,11 +334,16 @@ export async function POST(request: NextRequest) {
             generation_time_seconds: 0,
             timestamp: new Date().toISOString(),
             verification_completed: Array.isArray(verificationsOrTimeout),
+            estimated_cost: estimatedCost,
+            actual_cost: actualCost,
           },
         };
 
         // Update saved result
         saveResultJson(finalResult, resultFilename);
+
+        // Clean up partial files now that final result is saved
+        cleanupPartialFiles(resultFilename);
 
         sendProgress({
           stage: 'complete',

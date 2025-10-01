@@ -32,6 +32,7 @@ export interface Scene {
 
 export interface SceneWithPrompt extends Scene {
   image_prompt: string;
+  negative_prompt?: string;
   dialogue?: string;
 }
 
@@ -76,6 +77,8 @@ export interface GenerationResult {
     needs_review: number;
     generation_time_seconds: number;
     timestamp: string;
+    estimated_cost?: number;
+    actual_cost?: number;
   };
 }
 

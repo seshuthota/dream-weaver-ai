@@ -29,8 +29,8 @@ export const MODELS: Record<string, ModelConfig> = {
   },
   verification: {
     provider: AI_PROVIDERS.OPENROUTER,
-    model: 'x-ai/grok-4-fast:free',
-    description: 'Image quality verification and scoring',
+    model: 'x-ai/grok-vision-beta',
+    description: 'Vision-capable model for image quality verification and scoring',
   },
 } as const;
 

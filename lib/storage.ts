@@ -91,3 +91,37 @@ export function generateResultFilename(): string {
   const timestamp = Date.now();
   return `result_${timestamp}.json`;
 }
+
+/**
+ * Cleans up partial result files after successful generation
+ * @param baseFilename - Base filename (without _partial_N.json suffix)
+ */
+export function cleanupPartialFiles(baseFilename: string): void {
+  try {
+    const { dir } = getWritableDir();
+    const files = fs.readdirSync(dir);
+    
+    // Find all partial files matching the pattern
+    const baseName = baseFilename.replace('.json', '');
+    const partialPattern = new RegExp(`^${baseName}_partial_\\d+\\.json$`);
+    
+    let deletedCount = 0;
+    files.forEach((file) => {
+      if (partialPattern.test(file)) {
+        try {
+          fs.unlinkSync(path.join(dir, file));
+          deletedCount++;
+        } catch (error) {
+          console.error(`Failed to delete partial file ${file}:`, error);
+        }
+      }
+    });
+    
+    if (deletedCount > 0) {
+      console.log(`✅ Cleaned up ${deletedCount} partial result files`);
+    }
+  } catch (error) {
+    console.error('Error cleaning up partial files:', error);
+    // Non-critical error, don't throw
+  }
+}
