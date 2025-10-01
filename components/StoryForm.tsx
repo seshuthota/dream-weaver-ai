@@ -30,6 +30,10 @@ export function StoryForm({ onSubmit, isGenerating, initialInput }: StoryFormPro
   const [showCharacters, setShowCharacters] = useState(true);
   const [comicMode, setComicMode] = useState(false);
   const [isGeneratingIdea, setIsGeneratingIdea] = useState(false);
+  const [showIdeaOptions, setShowIdeaOptions] = useState(false);
+  const [ideaGenre, setIdeaGenre] = useState('fantasy');
+  const [ideaTone, setIdeaTone] = useState('balanced');
+  const [ideaComplexity, setIdeaComplexity] = useState('standard');
 
   // Load initial input when provided (from history)
   useEffect(() => {
@@ -65,6 +69,14 @@ export function StoryForm({ onSubmit, isGenerating, initialInput }: StoryFormPro
     try {
       const response = await fetch('/api/generate-idea', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          genre: ideaGenre,
+          tone: ideaTone,
+          complexity: ideaComplexity,
+        }),
       });
 
       if (!response.ok) {
@@ -78,6 +90,7 @@ export function StoryForm({ onSubmit, isGenerating, initialInput }: StoryFormPro
       setCharacters(idea.characters || [{ name: '', traits: '' }]);
       setStyle(idea.style || 'shoujo');
       setScenesCount(idea.scenes || 3);
+      setShowIdeaOptions(false); // Collapse options after generation
     } catch (error) {
       console.error('Story generation error:', error);
       alert('Failed to generate story idea. Please try again.');
@@ -112,30 +125,127 @@ export function StoryForm({ onSubmit, isGenerating, initialInput }: StoryFormPro
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* AI Generate Story Button */}
-      <button
-        type="button"
-        onClick={generateRandomStory}
-        disabled={isGeneratingIdea || isGenerating}
-        className={cn(
-          "w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium text-sm transition-all",
-          isGeneratingIdea || isGenerating
-            ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-            : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg"
-        )}
-      >
-        {isGeneratingIdea ? (
-          <>
-            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            Generating Idea...
-          </>
-        ) : (
-          <>
+      {/* AI Generate Story Section */}
+      <div className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/30 rounded-lg p-3">
+        <div className="flex items-center justify-between mb-2">
+          <button
+            type="button"
+            onClick={() => setShowIdeaOptions(!showIdeaOptions)}
+            className="flex items-center gap-2 text-sm font-semibold text-white hover:text-indigo-400 transition-colors"
+          >
             <Sparkles className="w-4 h-4" />
-            ✨ Generate Random Story
-          </>
+            AI Story Generator
+            {showIdeaOptions ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+        </div>
+
+        {showIdeaOptions && (
+          <div className="space-y-3 mb-3">
+            {/* Genre Selection */}
+            <div>
+              <label className="block text-xs font-medium text-gray-300 mb-1.5">Genre</label>
+              <div className="grid grid-cols-3 gap-2">
+                {['Action', 'Romance', 'Fantasy', 'Slice of Life', 'Mystery', 'Comedy'].map((genre) => (
+                  <button
+                    key={genre}
+                    type="button"
+                    onClick={() => setIdeaGenre(genre.toLowerCase())}
+                    disabled={isGeneratingIdea || isGenerating}
+                    className={cn(
+                      "px-2 py-1.5 rounded text-xs font-medium transition-all",
+                      ideaGenre === genre.toLowerCase()
+                        ? "bg-indigo-600 text-white"
+                        : "bg-black/30 text-gray-300 hover:bg-black/50"
+                    )}
+                  >
+                    {genre}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Tone Selection */}
+            <div>
+              <label className="block text-xs font-medium text-gray-300 mb-1.5">Tone</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: 'light', label: '☀️ Light', desc: 'Fun & upbeat' },
+                  { value: 'balanced', label: '⚖️ Balanced', desc: 'Mix of both' },
+                  { value: 'dark', label: '🌙 Dark', desc: 'Serious & intense' }
+                ].map((tone) => (
+                  <button
+                    key={tone.value}
+                    type="button"
+                    onClick={() => setIdeaTone(tone.value)}
+                    disabled={isGeneratingIdea || isGenerating}
+                    className={cn(
+                      "px-2 py-2 rounded text-xs font-medium transition-all",
+                      ideaTone === tone.value
+                        ? "bg-purple-600 text-white"
+                        : "bg-black/30 text-gray-300 hover:bg-black/50"
+                    )}
+                  >
+                    <div>{tone.label}</div>
+                    <div className="text-[10px] text-gray-400 mt-0.5">{tone.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Complexity Selection */}
+            <div>
+              <label className="block text-xs font-medium text-gray-300 mb-1.5">Complexity</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: 'simple', label: 'Simple', desc: '2-3 chars, 3-4 scenes' },
+                  { value: 'standard', label: 'Standard', desc: '3-4 chars, 5-6 scenes' },
+                  { value: 'epic', label: 'Epic', desc: '4-5 chars, 7-8 scenes' }
+                ].map((complexity) => (
+                  <button
+                    key={complexity.value}
+                    type="button"
+                    onClick={() => setIdeaComplexity(complexity.value)}
+                    disabled={isGeneratingIdea || isGenerating}
+                    className={cn(
+                      "px-2 py-2 rounded text-xs font-medium transition-all",
+                      ideaComplexity === complexity.value
+                        ? "bg-pink-600 text-white"
+                        : "bg-black/30 text-gray-300 hover:bg-black/50"
+                    )}
+                  >
+                    <div>{complexity.label}</div>
+                    <div className="text-[10px] text-gray-400 mt-0.5">{complexity.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
-      </button>
+
+        <button
+          type="button"
+          onClick={generateRandomStory}
+          disabled={isGeneratingIdea || isGenerating}
+          className={cn(
+            "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all",
+            isGeneratingIdea || isGenerating
+              ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+              : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg"
+          )}
+        >
+          {isGeneratingIdea ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Generating Idea...
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4" />
+              Generate Story Idea
+            </>
+          )}
+        </button>
+      </div>
 
       {/* Story Outline */}
       <div>

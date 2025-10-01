@@ -3,32 +3,67 @@ import { openrouter } from '@/lib/openrouter';
 
 const MODEL = 'x-ai/grok-4-fast:free';
 
+interface IdeaRequest {
+  genre?: string;
+  tone?: string;
+  complexity?: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const prompt = `Generate a creative and engaging anime story idea. Be imaginative and diverse in your suggestions.
+    const body: IdeaRequest = await request.json().catch(() => ({}));
+    const { 
+      genre = 'fantasy', 
+      tone = 'balanced', 
+      complexity = 'standard' 
+    } = body;
+
+    // Map complexity to character and scene counts
+    const complexityMap = {
+      simple: { chars: '2-3', scenes: '3-4' },
+      standard: { chars: '3-4', scenes: '5-6' },
+      epic: { chars: '4-5', scenes: '7-8' }
+    };
+    const { chars, scenes } = complexityMap[complexity as keyof typeof complexityMap] || complexityMap.standard;
+
+    // Tone descriptions
+    const toneDescriptions = {
+      light: 'lighthearted, fun, upbeat with positive vibes and happy moments',
+      balanced: 'balanced mix of light and serious moments, emotionally varied',
+      dark: 'dark, serious, intense with dramatic stakes and mature themes'
+    };
+    const toneDesc = toneDescriptions[tone as keyof typeof toneDescriptions] || toneDescriptions.balanced;
+
+    const prompt = `Generate a creative and engaging anime story idea in the ${genre} genre with a ${toneDesc} tone.
+
+Be imaginative and diverse in your suggestions.
 
 Requirements:
-1. Story outline: 2-3 sentences with an engaging hook and interesting premise
-2. Characters: 2-3 unique characters with distinct personalities and traits
-3. Style: Choose the most fitting anime style for this story
-4. Scene count: Recommend optimal number of scenes (3-8) based on story complexity
+1. Story outline: 2-3 sentences with an engaging hook and interesting premise that fits the ${genre} genre and ${tone} tone
+2. Characters: ${chars} unique characters with distinct personalities and traits that suit the ${tone} atmosphere
+3. Style: Choose the most fitting anime style for this ${genre} story (consider shoujo, shounen, seinen, slice-of-life, fantasy, sci-fi)
+4. Scene count: ${scenes} scenes based on ${complexity} complexity
 
 Available styles: shoujo, shounen, seinen, slice-of-life, fantasy, sci-fi
 
 Output MUST be valid JSON in this exact format:
 {
-  "outline": "A compelling 2-3 sentence story premise",
+  "outline": "A compelling 2-3 sentence story premise that matches the ${genre} genre and ${tone} tone",
   "characters": [
     {
       "name": "Character Name",
-      "traits": "personality, appearance, special abilities or characteristics"
+      "traits": "personality, appearance, special abilities or characteristics fitting the ${tone} tone"
     }
   ],
-  "style": "one of the available styles",
-  "scenes": number between 3-8
+  "style": "one of the available styles that best fits ${genre}",
+  "scenes": number between ${scenes.split('-')[0]} and ${scenes.split('-')[1]}
 }
 
-Be creative! Mix genres, create unique character dynamics, and suggest stories that would make great anime.`;
+GENRE FOCUS: ${genre}
+TONE: ${tone} (${toneDesc})
+COMPLEXITY: ${complexity} (${chars} characters, ${scenes} scenes)
+
+Be creative! Create unique character dynamics and suggest a story that would make a great ${genre} anime with a ${tone} tone.`;
 
     const response = await openrouter.generateText(MODEL, prompt);
 
