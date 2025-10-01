@@ -19,7 +19,7 @@ cp .env.local.example .env.local
 
 Your `.env.local` should look like:
 ```env
-OPENROUTER_API_KEY=sk-or-v1-your-key-here
+OPENROUTER_API_KEY=your_openrouter_api_key_here
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_SITE_NAME=Anime Maker
 ```
