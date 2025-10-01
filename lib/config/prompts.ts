@@ -94,9 +94,11 @@ Generate the following in ONE response:
 3. KEY SCENES: Extract exactly ${input.scenes_per_episode} visually impactful scenes
    For EACH scene provide:
    - Scene ID (scene_1, scene_2, etc.)
-   - Description: ONE SENTENCE story narrative for viewers to read
-     Example: "Yuki discovers her ice powers during lunch break."
-     This is VIEWER TEXT - NOT technical details, camera angles, or art style
+   - Description: SHORT 1-2 SENTENCE story caption (MAX 15 words)
+     CRITICAL: This appears as overlay text on the image - keep it EXTREMELY concise
+     Good: "Lila bakes cookies while Finn causes mischief in the kitchen."
+     Bad: "In the cozy bakery kitchen, surrounded by flour and sugar, Lila carefully..."
+     MUST BE SHORT AND DIRECT - viewers see this as a caption
    - Characters present
    - Setting/location (brief, e.g., "school courtyard")
    - Mood/atmosphere
@@ -140,7 +142,7 @@ Output MUST be valid JSON in this EXACT format:
   "scenes": [
     {
       "id": "scene_1",
-      "description": "One sentence describing what happens in this scene for viewers",
+      "description": "Short caption (MAX 15 words, 1-2 sentences)",
       "characters_present": ["Character1", "Character2"],
       "setting": "Brief location name",
       "mood": "Emotional atmosphere",
@@ -152,13 +154,23 @@ Output MUST be valid JSON in this EXACT format:
   ]
 }
 
-CRITICAL REQUIREMENTS:
-- "description" field: ONE SENTENCE viewer-friendly narrative (e.g., "Yuki freezes the classroom by accident.")
+CRITICAL REQUIREMENTS FOR "description" FIELD:
+- MUST be SHORT: Maximum 15 words, 1-2 sentences only
+- This is CAPTION TEXT shown to viewers - must be extremely concise
+- Good examples: 
+  * "Lila discovers her magical baking powers."
+  * "Finn accidentally unleashes chaos in the lab."
+  * "The friends face off in an epic cooking battle."
+- BAD examples (TOO LONG - DO NOT DO THIS):
+  * "In a sunlit kitchen filled with the aroma of fresh cookies, Lila nervously..."
+  * "As the morning sun streams through the windows, our protagonist..."
 - "image_prompt" field: HIGHLY DETAILED technical prompt with all visual specifications
-- Keep these SEPARATE - description is for viewers, image_prompt is for the AI image generator
+- Keep these SEPARATE - description is SHORT caption, image_prompt is DETAILED technical
 
 Be extremely detailed in image_prompts. Include specific colors, positions, emotions, and style elements.
-${input.comicMode ? 'COMIC MODE: Include exact text placement and dialogue in every image_prompt.' : ''}`;
+${input.comicMode ? 'COMIC MODE: Include exact text placement and dialogue in every image_prompt.' : ''}
+
+FINAL REMINDER: Each scene "description" MUST be under 15 words. This is a STRICT requirement - longer descriptions will be rejected.`;
   },
 
   characterProfiles: ({ characters, style }: CharacterProfilesParams) => {
