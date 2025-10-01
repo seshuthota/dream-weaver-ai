@@ -54,7 +54,8 @@ export async function generateCompleteStory(
 
 export async function generateCharacterProfiles(
   characters: { name: string; traits: string }[],
-  style: string
+  style: string,
+  apiKey: string
 ): Promise<Record<string, CharacterProfile>> {
   const prompt = `Create detailed anime character profiles for a ${style} anime.
 
@@ -82,7 +83,8 @@ Output MUST be valid JSON in this exact format:
 
 Be creative and detailed, but ensure consistency for character recognition across multiple images.`;
 
-  const response = await openrouter.generateText(MODELS.story, prompt);
+  const client = createOpenRouterClient(apiKey);
+  const response = await client.generateText(MODELS.story.model, prompt);
 
   try {
     let text = response;
@@ -102,7 +104,8 @@ export async function generateScript(
   outline: string,
   characters: Record<string, CharacterProfile>,
   style: string,
-  numEpisodes: number
+  numEpisodes: number,
+  apiKey: string
 ): Promise<string> {
   const charSummary = Object.entries(characters)
     .map(([name, data]) => `- ${name}: ${data.personality}`)
@@ -124,13 +127,15 @@ Requirements:
 
 Format the script clearly with scene headers and dialogue.`;
 
-  return await openrouter.generateText(MODELS.story, prompt);
+  const client = createOpenRouterClient(apiKey);
+  return await client.generateText(MODELS.story.model, prompt);
 }
 
 export async function extractKeyScenes(
   script: string,
   characters: Record<string, CharacterProfile>,
-  numScenes: number
+  numScenes: number,
+  apiKey: string
 ): Promise<Scene[]> {
   const charList = Object.keys(characters).join(', ');
 
@@ -163,7 +168,8 @@ Output MUST be valid JSON array:
 
 Choose the most visually impactful and story-important scenes.`;
 
-  const response = await openrouter.generateText(MODELS.story, prompt);
+  const client = createOpenRouterClient(apiKey);
+  const response = await client.generateText(MODELS.story.model, prompt);
 
   try {
     let text = response;
@@ -183,6 +189,7 @@ export async function generateImagePrompt(
   scene: Scene,
   characters: Record<string, CharacterProfile>,
   style: string,
+  apiKey: string,
   comicMode?: boolean
 ): Promise<ImagePrompt> {
   const characterDescriptions = scene.characters_present
@@ -309,7 +316,8 @@ Output MUST be valid JSON:
 
 Make the prompt natural-sounding but extremely detailed and specific. Include all character details from profiles.`;
 
-  const response = await openrouter.generateText(MODELS.prompt, prompt);
+  const client = createOpenRouterClient(apiKey);
+  const response = await client.generateText(MODELS.prompt.model, prompt);
 
   try {
     let text = response;
