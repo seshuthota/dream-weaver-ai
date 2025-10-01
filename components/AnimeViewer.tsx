@@ -118,7 +118,7 @@ Quality Score: ${result.metadata.passed_verification}/${result.metadata.total_sc
 - script.txt - Full anime script
 
 ---
-🤖 Generated with Anime Maker
+🤖 Generated with Dream Weaver AI
 `;
       zip.file('README.md', readme);
 

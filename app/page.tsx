@@ -121,7 +121,10 @@ export default function Home() {
         <div className="px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Sparkles className="w-6 h-6 text-purple-400" />
-            <h1 className="text-2xl font-bold text-white">Anime Maker</h1>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Dream Weaver AI</h1>
+              <p className="text-sm text-purple-300 mt-0.5">Transform Stories into Anime</p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <ApiKeyInput />

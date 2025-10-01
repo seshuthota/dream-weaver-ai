@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Anime Maker - AI-Powered Anime Generator",
-  description: "Generate beautiful anime scenes with AI using the latest Gemini models",
+  title: "Dream Weaver AI - AI-Powered Anime Story Generator",
+  description: "Transform your stories into beautiful anime with AI. Generate complete narratives with multi-scene image generation, character consistency, and style customization.",
 };
 
 export default function RootLayout({

@@ -1,4 +1,6 @@
-# Anime Maker - Web Frontend 🎨
+# Dream Weaver AI - Web Frontend 🎨
+
+**Transform Stories into Anime with AI**
 
 A beautiful Next.js web application for generating anime scenes using AI.
 
@@ -26,7 +28,7 @@ cp .env.local.example .env.local
 ```env
 OPENROUTER_API_KEY=your_key_here
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
-NEXT_PUBLIC_SITE_NAME=Anime Maker
+NEXT_PUBLIC_SITE_NAME=Dream Weaver AI
 ```
 
 ### Run Development Server
