@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Plus, X, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import type { AnimeInput, Character } from '@/types';
 import { cn, estimateCost } from '@/lib/utils';
+import { clientApiKey } from '@/lib/apiKeyManager';
 
 interface StoryFormProps {
   onSubmit: (input: AnimeInput) => void;
@@ -67,10 +68,18 @@ export function StoryForm({ onSubmit, isGenerating, initialInput }: StoryFormPro
   const generateRandomStory = async () => {
     setIsGeneratingIdea(true);
     try {
+      const apiKey = clientApiKey.get();
+      if (!apiKey) {
+        alert('Please provide your OpenRouter API key first');
+        setIsGeneratingIdea(false);
+        return;
+      }
+
       const response = await fetch('/api/generate-idea', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-api-key': apiKey,
         },
         body: JSON.stringify({
           genre: ideaGenre,

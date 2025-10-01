@@ -1,20 +1,20 @@
 import OpenAI from 'openai';
+import { API_CONFIG } from './config/models';
 
 export class OpenRouterClient {
   private client: OpenAI;
+  private apiKey: string;
 
-  constructor() {
-    if (!process.env.OPENROUTER_API_KEY) {
-      throw new Error('OPENROUTER_API_KEY is not set');
+  constructor(apiKey: string) {
+    if (!apiKey || apiKey.trim().length === 0) {
+      throw new Error('API key is required');
     }
 
+    this.apiKey = apiKey;
     this.client = new OpenAI({
-      baseURL: 'https://openrouter.ai/api/v1',
-      apiKey: process.env.OPENROUTER_API_KEY,
-      defaultHeaders: {
-        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
-        'X-Title': process.env.NEXT_PUBLIC_SITE_NAME || 'Anime Maker'
-      }
+      baseURL: API_CONFIG.openrouter.baseUrl,
+      apiKey: this.apiKey,
+      defaultHeaders: API_CONFIG.openrouter.defaultHeaders,
     });
   }
 
@@ -31,13 +31,12 @@ export class OpenRouterClient {
 
   async generateImage(model: string, prompt: string): Promise<{ success: boolean; imageData?: string; error?: string }> {
     try {
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      const response = await fetch(`${API_CONFIG.openrouter.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
-          'X-Title': process.env.NEXT_PUBLIC_SITE_NAME || 'Anime Maker'
+          ...API_CONFIG.openrouter.defaultHeaders,
         },
         body: JSON.stringify({
           model,
@@ -99,4 +98,11 @@ export class OpenRouterClient {
   }
 }
 
-export const openrouter = new OpenRouterClient();
+/**
+ * Create an OpenRouter client with the provided API key
+ * @param apiKey - OpenRouter API key
+ * @returns OpenRouterClient instance
+ */
+export function createOpenRouterClient(apiKey: string): OpenRouterClient {
+  return new OpenRouterClient(apiKey);
+}

@@ -11,9 +11,27 @@ import {
   generateImageFilename,
   generateResultFilename,
 } from '@/lib/storage';
+import { getApiKey, requireApiKey } from '@/lib/apiKeyManager';
 
 export async function POST(request: NextRequest) {
   const input: AnimeInput = await request.json();
+
+  // Get and validate API key
+  const apiKey = getApiKey(request);
+  try {
+    requireApiKey(apiKey);
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : 'API key required',
+        code: 'API_KEY_REQUIRED' 
+      }),
+      {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -30,7 +48,7 @@ export async function POST(request: NextRequest) {
           message: '🎬 Generating complete story with all scenes...',
         });
 
-        const { characters, script, scenes } = await generateCompleteStory(input);
+        const { characters, script, scenes } = await generateCompleteStory(input, apiKey);
 
         sendProgress({
           stage: 'story',
@@ -61,7 +79,7 @@ export async function POST(request: NextRequest) {
           const maxAttempts = 3;
 
           while (attempts < maxAttempts) {
-            imageResult = await generateImage(scene.image_prompt);
+            imageResult = await generateImage(scene.image_prompt, apiKey);
             if (imageResult.success) break;
             attempts++;
           }
@@ -150,7 +168,7 @@ export async function POST(request: NextRequest) {
           if (!genScene.tempData) return null; // Skip failed generations
 
           const scene = scenes[index];
-          const verification = await verifyImage(genScene.tempData, scene, characters);
+          const verification = await verifyImage(genScene.tempData, scene, characters, apiKey);
 
           completedVerifications++;
           sendProgress({

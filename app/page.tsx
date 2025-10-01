@@ -6,8 +6,10 @@ import { StoryForm } from '@/components/StoryForm';
 import { ProgressStream } from '@/components/ProgressStream';
 import { AnimeViewer } from '@/components/AnimeViewer';
 import { HistoryPanel } from '@/components/HistoryPanel';
+import { ApiKeyInput } from '@/components/ApiKeyInput';
 import type { AnimeInput, GenerationResult, GenerationProgress, HistoryEntry } from '@/types';
 import { saveToHistory, getHistoryCount } from '@/lib/history';
+import { clientApiKey } from '@/lib/apiKeyManager';
 
 export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -31,10 +33,16 @@ export default function Home() {
     progressRef.current = null;
 
     try {
+      const apiKey = clientApiKey.get();
+      if (!apiKey) {
+        throw new Error('Please provide your OpenRouter API key');
+      }
+
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-api-key': apiKey,
         },
         body: JSON.stringify(input),
       });
@@ -135,6 +143,7 @@ export default function Home() {
         {/* Left Sidebar - Form */}
         <div className="w-96 border-r border-white/10 bg-black/20 backdrop-blur-sm overflow-y-auto flex-shrink-0">
           <div className="p-6">
+            <ApiKeyInput />
             <StoryForm
               onSubmit={handleGenerate}
               isGenerating={isGenerating}

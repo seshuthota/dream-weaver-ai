@@ -1,4 +1,6 @@
-import { openrouter } from './openrouter';
+import { createOpenRouterClient } from './openrouter';
+import { MODELS } from './config/models';
+import { PROMPTS } from './config/prompts';
 import type {
   AnimeInput,
   CharacterProfile,
@@ -8,129 +10,21 @@ import type {
   VerificationResult,
 } from '@/types';
 
-const MODELS = {
-  story: 'x-ai/grok-4-fast:free',
-  prompt: 'x-ai/grok-4-fast:free',
-  image: 'google/gemini-2.5-flash-image-preview',
-  verification: 'x-ai/grok-4-fast:free',
-};
-
 /**
  * OPTIMIZED: Generate complete story with all scenes and prompts in one API call
  * This replaces the sequential character → script → scenes → prompts flow
  */
 export async function generateCompleteStory(
-  input: AnimeInput
+  input: AnimeInput,
+  apiKey: string
 ): Promise<{
   characters: Record<string, CharacterProfile>;
   script: string;
   scenes: SceneWithPrompt[];
 }> {
-  const characterList = input.characters
-    .map(c => `- ${c.name}: ${c.traits}`)
-    .join('\n');
-
-  const comicModeInstructions = input.comicMode ? `
-
-COMIC MODE ENABLED - TEXT IN IMAGES:
-For each scene's image_prompt, include SPECIFIC instructions for:
-- Speech bubble placement (e.g., "large white speech bubble at top-left")
-- Exact dialogue text to appear in bubble (e.g., "bubble text: 'Watch out!'")
-- Sound effects with positioning (e.g., "bold red text 'POW!' near action")
-- Caption boxes for narration (e.g., "yellow caption box at bottom: 'Meanwhile...'")
-- Font styling: LARGE, BOLD, highly readable text
-- High contrast: white bubbles with black outlines
-- Clear bubble tails pointing to speakers
-- Text size: minimum 24pt equivalent, easily readable
-- Emotional symbols (sweat drops, anger marks, hearts)
-
-Example image_prompt with text:
-"anime scene showing [description], white speech bubble at top-left with bold black text saying 'I won't give up!',
-character's mouth open mid-speech, sound effect 'WHOOSH!' in red letters near motion lines"
-` : '';
-
-  const prompt = `Generate a complete anime story with all details in a single structured response.
-
-STORY OUTLINE: ${input.outline}
-
-CHARACTERS:
-${characterList}
-
-STYLE: ${input.style}
-NUMBER OF SCENES: ${input.scenes_per_episode}${comicModeInstructions}
-
-Generate the following in ONE response:
-
-1. CHARACTER PROFILES: Detailed design for each character
-   - Physical appearance (hair, eyes, height, build)
-   - Outfit description (specific colors and style)
-   - Personality traits
-   - Visual markers (unique features)
-   - Color palette (3 colors)
-
-2. FULL SCRIPT: Complete anime script with:
-   - Scene descriptions
-   - Character actions and emotions
-   - Dialogue for each character
-   - ${input.style} style elements
-
-3. KEY SCENES: Extract exactly ${input.scenes_per_episode} visually impactful scenes
-   For EACH scene provide:
-   - Scene ID (scene_1, scene_2, etc.)
-   - Description: ONE SENTENCE summarizing what happens (viewer-facing narrative, e.g., "Yuki discovers her ice powers in the school courtyard.")
-   - Characters present
-   - Setting/location (brief, e.g., "school courtyard")
-   - Mood/atmosphere
-   - Visual elements
-   - Dialogue (if any, character name + line)
-   - COMPLETE IMAGE_PROMPT ready for image generation API (this is SEPARATE from description - highly detailed technical prompt)
-
-IMAGE_PROMPT REQUIREMENTS (CRITICAL):
-Each image_prompt must be a detailed, complete prompt ready to send directly to the image API.
-Include:
-- All character details (appearance, outfit, pose, expression)
-- Background and setting specifics
-- Lighting, colors, composition
-- ${input.style} anime style specifications
-- Professional quality indicators
-${input.comicMode ? '- COMIC MODE: Specific text bubble placements with exact dialogue to render' : ''}
-
-Output MUST be valid JSON in this EXACT format:
-{
-  "characters": {
-    "character_name": {
-      "name": "Full Name",
-      "appearance": "detailed description",
-      "outfit": "detailed outfit",
-      "personality": "personality traits",
-      "visual_markers": "unique features",
-      "color_palette": ["#color1", "#color2", "#color3"]
-    }
-  },
-  "script": "Full script text with scenes and dialogue...",
-  "scenes": [
-    {
-      "id": "scene_1",
-      "description": "One sentence describing what happens in this scene for viewers",
-      "characters_present": ["Character1", "Character2"],
-      "setting": "Brief location name",
-      "mood": "Emotional atmosphere",
-      "visual_elements": ["element1", "element2"],
-      "dialogue": "Character Name: Their dialogue line",
-      "image_prompt": "COMPLETE detailed technical prompt for image generation: masterpiece, high quality ${input.comicMode ? 'comic manga panel with speech bubbles' : 'anime art'}, [character name] with [full appearance details] wearing [outfit details], [specific action/pose], [detailed setting], [lighting], [mood], ${input.style} style${input.comicMode ? ', speech bubble at [position] with text [exact dialogue], sound effect [text] at [position]' : ''}, professional anime production, vibrant colors"
-    }
-  ]
-}
-
-CRITICAL REQUIREMENTS:
-- "description" field: ONE SENTENCE viewer-friendly narrative (e.g., "Yuki freezes the classroom by accident.")
-- "image_prompt" field: HIGHLY DETAILED technical prompt with all visual specifications
-- Keep these SEPARATE - description is for viewers, image_prompt is for the AI image generator
-
-Be extremely detailed in image_prompts. Include specific colors, positions, emotions, and style elements.
-${input.comicMode ? 'COMIC MODE: Include exact text placement and dialogue in every image_prompt.' : ''}`;
-
-  const response = await openrouter.generateText(MODELS.story, prompt);
+  const prompt = PROMPTS.completeStory({ input });
+  const client = createOpenRouterClient(apiKey);
+  const response = await client.generateText(MODELS.story.model, prompt);
 
   try {
     let text = response;
@@ -437,14 +331,19 @@ Make the prompt natural-sounding but extremely detailed and specific. Include al
   }
 }
 
-export async function generateImage(prompt: string): Promise<{ success: boolean; imageData?: string; error?: string }> {
-  return await openrouter.generateImage(MODELS.image, prompt);
+export async function generateImage(
+  prompt: string,
+  apiKey: string
+): Promise<{ success: boolean; imageData?: string; error?: string }> {
+  const client = createOpenRouterClient(apiKey);
+  return await client.generateImage(MODELS.image.model, prompt);
 }
 
 export async function verifyImage(
   imageData: string,
   scene: Scene,
-  characters: Record<string, CharacterProfile>
+  characters: Record<string, CharacterProfile>,
+  apiKey: string
 ): Promise<VerificationResult> {
   const charDescriptions = scene.characters_present
     .map((charName) => {
@@ -453,38 +352,11 @@ export async function verifyImage(
     })
     .join('\n');
 
-  const verificationPrompt = `Analyze this anime image and verify it matches the requirements.
-
-EXPECTED SCENE:
-Description: ${scene.description}
-Setting: ${scene.setting}
-Mood: ${scene.mood}
-Visual Elements: ${scene.visual_elements.join(', ')}
-
-EXPECTED CHARACTERS:
-${charDescriptions}
-
-Please evaluate:
-1. CHARACTER CONSISTENCY (0-1): Do characters match their described appearance?
-2. SCENE ACCURACY (0-1): Does the image match the scene description?
-3. QUALITY (0-1): Is this professional-quality anime art?
-4. List any issues or inconsistencies
-5. Provide specific suggestions for improvement if needed
-
-Output MUST be valid JSON:
-{
-  "passed": true or false,
-  "character_consistency_score": 0.0 to 1.0,
-  "scene_accuracy_score": 0.0 to 1.0,
-  "quality_score": 0.0 to 1.0,
-  "issues": ["list of any issues found"],
-  "suggestions": "specific improvements needed"
-}
-
-Be objective but not overly critical. The image should pass if it's reasonable quality and mostly matches requirements.`;
+  const verificationPrompt = PROMPTS.verification({ scene, characters });
+  const client = createOpenRouterClient(apiKey);
 
   try {
-    const response = await openrouter.analyzeImage(MODELS.verification, verificationPrompt, imageData);
+    const response = await client.analyzeImage(MODELS.verification.model, verificationPrompt, imageData);
 
     let text = response;
     if (text.includes('```json')) {
