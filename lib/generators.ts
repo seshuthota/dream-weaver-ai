@@ -366,14 +366,53 @@ export async function verifyImage(
   try {
     const response = await client.analyzeImage(MODELS.verification.model, verificationPrompt, imageData);
 
-    let text = response;
-    if (text.includes('```json')) {
-      text = text.split('```json')[1].split('```')[0];
-    } else if (text.includes('```')) {
-      text = text.split('```')[1].split('```')[0];
+    if (!response || typeof response !== 'string') {
+      throw new Error('Invalid response from verification API');
     }
 
-    const result: VerificationResult = JSON.parse(text.trim());
+    let text = response;
+    
+    // Try to extract JSON from various formats
+    if (text.includes('```json')) {
+      const parts = text.split('```json');
+      if (parts.length > 1) {
+        text = parts[1].split('```')[0];
+      }
+    } else if (text.includes('```')) {
+      const parts = text.split('```');
+      if (parts.length > 1) {
+        text = parts[1].split('```')[0];
+      }
+    }
+
+    // Clean up text before parsing
+    text = text.trim();
+    
+    // If text doesn't start with {, try to find JSON object
+    if (!text.startsWith('{')) {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        text = jsonMatch[0];
+      } else {
+        throw new Error('No JSON object found in response');
+      }
+    }
+
+    let result: VerificationResult;
+    try {
+      result = JSON.parse(text);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Attempted to parse:', text.substring(0, 200));
+      throw new Error(`Failed to parse verification JSON: ${parseError}`);
+    }
+
+    // Validate required fields
+    if (typeof result.character_consistency_score !== 'number' ||
+        typeof result.scene_accuracy_score !== 'number' ||
+        typeof result.quality_score !== 'number') {
+      throw new Error('Invalid verification result structure');
+    }
 
     // Calculate if passed based on threshold
     const scores = [
@@ -382,18 +421,20 @@ export async function verifyImage(
       result.quality_score,
     ];
     const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
-    result.passed = avgScore >= 0.75; // Stricter threshold
+    result.passed = avgScore >= 0.75;
 
     return result;
   } catch (error) {
-    console.error('Error verifying image:', error);
-    // Return neutral pass on error (meet minimum threshold)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error verifying image:', errorMessage);
+    
+    // Return neutral pass on error - verification is optional
     return {
       passed: true,
       character_consistency_score: 0.75,
       scene_accuracy_score: 0.75,
       quality_score: 0.75,
-      issues: ['Could not parse verification result'],
+      issues: [`Verification skipped: ${errorMessage}`],
       suggestions: 'Manual review recommended',
     };
   }

@@ -196,11 +196,14 @@ export async function POST(request: NextRequest) {
 
         // Start verification but with timeout protection
         const verifyWithTimeout = async (genScene: any, scene: Scene, index: number) => {
-          if (!tempDataForVerification[index]) return null;
+          if (!tempDataForVerification[index]) {
+            console.log(`Skipping verification for scene ${index}: no image data`);
+            return null;
+          }
           
           try {
             const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Verification timeout')), 15000)
+              setTimeout(() => reject(new Error('Verification timeout (15s)')), 15000)
             );
             
             const verifyPromise = verifyImage(tempDataForVerification[index], scene, characters, apiKey);
@@ -218,7 +221,19 @@ export async function POST(request: NextRequest) {
 
             return verification;
           } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+            console.log(`Verification failed for scene ${index}: ${errorMsg}`);
             completedVerifications++;
+            
+            // Still send progress update even on failure
+            sendProgress({
+              stage: 'verification',
+              progress: 85 + (completedVerifications / totalScenes) * 10,
+              currentScene: completedVerifications,
+              totalScenes,
+              message: `⚠️ Quality check ${completedVerifications}/${totalScenes} (skipped)`,
+            });
+            
             return null; // Skip failed verifications silently
           }
         };
