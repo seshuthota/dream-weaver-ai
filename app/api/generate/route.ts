@@ -205,6 +205,7 @@ export async function POST(request: NextRequest) {
             total_scenes: totalScenes,
             passed_verification: generatedScenes.filter((s) => s.verification?.passed).length,
             needs_review: generatedScenes.filter((s) => !s.verification?.passed).length,
+            generation_time_seconds: 0, // Calculated by frontend
             timestamp: new Date().toISOString(),
           },
         };
