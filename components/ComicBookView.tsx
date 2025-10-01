@@ -136,16 +136,21 @@ export function ComicBookView({ result }: ComicBookViewProps) {
                   )}
                 </div>
 
-                {/* Narrative Box (if no dialogue or additional text) */}
-                {dialogue.length === 0 && scene.verification?.suggestions && (
+                {/* Narrative Box - Scene Description */}
+                {scene.description && (
                   <div className="mt-2 bg-yellow-100 border-3 border-black p-3 shadow-md"
                     style={{
                       borderWidth: '3px',
                       fontFamily: 'Arial, sans-serif'
                     }}>
                     <p className="text-black text-sm font-bold italic leading-tight">
-                      {scene.verification.suggestions}
+                      {scene.description}
                     </p>
+                    {scene.setting && (
+                      <p className="text-gray-700 text-xs mt-1">
+                        📍 {scene.setting}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

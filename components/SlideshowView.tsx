@@ -109,9 +109,19 @@ export function SlideshowView({ result }: SlideshowViewProps) {
                 </span>
               )}
             </div>
-            <p className="text-white text-sm leading-relaxed">
-              {currentScene.verification?.suggestions || 'AI-generated anime scene'}
+            <p className="text-white text-base leading-relaxed">
+              {currentScene.description || 'AI-generated anime scene'}
             </p>
+            {currentScene.dialogue && (
+              <p className="text-purple-300 text-sm mt-2 italic">
+                💬 {currentScene.dialogue}
+              </p>
+            )}
+            {currentScene.setting && (
+              <p className="text-gray-400 text-xs mt-1">
+                📍 {currentScene.setting}
+              </p>
+            )}
           </div>
         </div>
       </div>

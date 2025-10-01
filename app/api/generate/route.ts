@@ -96,6 +96,9 @@ export async function POST(request: NextRequest) {
             generatedScenes.push({
               scene_id: scene.id,
               image_url: '',
+              description: scene.description || '',
+              dialogue: scene.dialogue,
+              setting: scene.setting,
               error: result.reason?.message || 'Generation failed',
               attempts: 0,
             });
@@ -108,6 +111,9 @@ export async function POST(request: NextRequest) {
             generatedScenes.push({
               scene_id: scene.id,
               image_url: '',
+              description: scene.description || '',
+              dialogue: scene.dialogue,
+              setting: scene.setting,
               error: imageResult?.error || 'Generation failed',
               attempts,
             });
@@ -121,6 +127,9 @@ export async function POST(request: NextRequest) {
           generatedScenes.push({
             scene_id: scene.id,
             image_url: imageUrl,
+            description: scene.description || '',
+            dialogue: scene.dialogue,
+            setting: scene.setting,
             attempts,
             tempData: imageResult.imageData, // Keep for verification
           });

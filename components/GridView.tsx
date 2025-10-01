@@ -74,7 +74,7 @@ export function GridView({ result }: GridViewProps) {
                 {/* Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                   <div className="absolute bottom-0 left-0 right-0 p-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-1">
                       <span className="text-white font-bold text-lg">
                         Scene {index + 1}
                       </span>
@@ -82,6 +82,11 @@ export function GridView({ result }: GridViewProps) {
                         ⭐ {(score * 100).toFixed(0)}%
                       </span>
                     </div>
+                    {scene.description && (
+                      <p className="text-white text-xs leading-tight line-clamp-2">
+                        {scene.description}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -153,6 +158,25 @@ export function GridView({ result }: GridViewProps) {
                   Download
                 </button>
               </div>
+
+              {/* Scene Description */}
+              {selectedScene.description && (
+                <div className="mt-3 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                  <p className="text-white text-sm leading-relaxed">
+                    {selectedScene.description}
+                  </p>
+                  {selectedScene.dialogue && (
+                    <p className="text-purple-300 text-sm mt-2 italic">
+                      💬 {selectedScene.dialogue}
+                    </p>
+                  )}
+                  {selectedScene.setting && (
+                    <p className="text-gray-400 text-xs mt-1">
+                      📍 {selectedScene.setting}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Verification Details */}
               {selectedScene.verification && (

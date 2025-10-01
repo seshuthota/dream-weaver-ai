@@ -48,6 +48,9 @@ export interface GeneratedImage {
   scene_id: string;
   image_url: string;
   image_path?: string;
+  description: string;
+  dialogue?: string;
+  setting?: string;
   verification?: VerificationResult;
   attempts: number;
 }

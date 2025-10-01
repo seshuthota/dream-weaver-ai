@@ -77,13 +77,13 @@ Generate the following in ONE response:
 3. KEY SCENES: Extract exactly ${input.scenes_per_episode} visually impactful scenes
    For EACH scene provide:
    - Scene ID (scene_1, scene_2, etc.)
-   - Visual description
+   - Description: ONE SENTENCE summarizing what happens (viewer-facing narrative, e.g., "Yuki discovers her ice powers in the school courtyard.")
    - Characters present
-   - Setting/location
+   - Setting/location (brief, e.g., "school courtyard")
    - Mood/atmosphere
    - Visual elements
-   - Dialogue (if any)
-   - COMPLETE IMAGE_PROMPT ready for image generation API
+   - Dialogue (if any, character name + line)
+   - COMPLETE IMAGE_PROMPT ready for image generation API (this is SEPARATE from description - highly detailed technical prompt)
 
 IMAGE_PROMPT REQUIREMENTS (CRITICAL):
 Each image_prompt must be a detailed, complete prompt ready to send directly to the image API.
@@ -111,16 +111,21 @@ Output MUST be valid JSON in this EXACT format:
   "scenes": [
     {
       "id": "scene_1",
-      "description": "What's happening visually",
+      "description": "One sentence describing what happens in this scene for viewers",
       "characters_present": ["Character1", "Character2"],
-      "setting": "Location description",
+      "setting": "Brief location name",
       "mood": "Emotional atmosphere",
       "visual_elements": ["element1", "element2"],
-      "dialogue": "Character: dialogue text",
-      "image_prompt": "COMPLETE detailed prompt: masterpiece, high quality ${input.comicMode ? 'comic manga panel with speech bubbles' : 'anime art'}, [character name] with [appearance details] wearing [outfit], [action/pose], [setting details], [lighting], [mood], ${input.style} style${input.comicMode ? ', speech bubble at [position] with text [exact dialogue], sound effect [text] at [position]' : ''}, professional anime production, vibrant colors"
+      "dialogue": "Character Name: Their dialogue line",
+      "image_prompt": "COMPLETE detailed technical prompt for image generation: masterpiece, high quality ${input.comicMode ? 'comic manga panel with speech bubbles' : 'anime art'}, [character name] with [full appearance details] wearing [outfit details], [specific action/pose], [detailed setting], [lighting], [mood], ${input.style} style${input.comicMode ? ', speech bubble at [position] with text [exact dialogue], sound effect [text] at [position]' : ''}, professional anime production, vibrant colors"
     }
   ]
 }
+
+CRITICAL REQUIREMENTS:
+- "description" field: ONE SENTENCE viewer-friendly narrative (e.g., "Yuki freezes the classroom by accident.")
+- "image_prompt" field: HIGHLY DETAILED technical prompt with all visual specifications
+- Keep these SEPARATE - description is for viewers, image_prompt is for the AI image generator
 
 Be extremely detailed in image_prompts. Include specific colors, positions, emotions, and style elements.
 ${input.comicMode ? 'COMIC MODE: Include exact text placement and dialogue in every image_prompt.' : ''}`;

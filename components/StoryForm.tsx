@@ -204,7 +204,13 @@ export function StoryForm({ onSubmit, isGenerating, initialInput }: StoryFormPro
                   <button
                     key={complexity.value}
                     type="button"
-                    onClick={() => setIdeaComplexity(complexity.value)}
+                    onClick={() => {
+                      setIdeaComplexity(complexity.value);
+                      // Auto-sync scenes count with complexity
+                      if (complexity.value === 'simple') setScenesCount(3);
+                      if (complexity.value === 'standard') setScenesCount(5);
+                      if (complexity.value === 'epic') setScenesCount(7);
+                    }}
                     disabled={isGeneratingIdea || isGenerating}
                     className={cn(
                       "px-2 py-2 rounded text-xs font-medium transition-all",
