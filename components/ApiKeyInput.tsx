@@ -1,23 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Key, X, Check, AlertCircle, ExternalLink } from 'lucide-react';
+import { Key, X, Check, AlertCircle, ExternalLink, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { clientApiKey } from '@/lib/apiKeyManager';
 
 export function ApiKeyInput() {
   const [hasKey, setHasKey] = useState(false);
-  const [showInput, setShowInput] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [error, setError] = useState('');
-  const [showBanner, setShowBanner] = useState(true);
 
   useEffect(() => {
     const keyExists = clientApiKey.exists();
     setHasKey(keyExists);
-    if (!keyExists) {
-      setShowInput(true);
-    }
   }, []);
 
   const handleSave = () => {
@@ -33,76 +29,74 @@ export function ApiKeyInput() {
 
     clientApiKey.set(apiKey);
     setHasKey(true);
-    setShowInput(false);
+    setShowDropdown(false);
     setError('');
     setApiKey('');
-  };
-
-  const handleChange = () => {
-    clientApiKey.remove();
-    setHasKey(false);
-    setShowInput(true);
-    setApiKey('');
-    setError('');
   };
 
   const handleRemove = () => {
     if (confirm('Are you sure you want to remove your API key? You will need to enter it again to use the app.')) {
       clientApiKey.remove();
       setHasKey(false);
-      setShowInput(true);
+      setApiKey('');
     }
   };
 
-  if (!showBanner && hasKey) {
-    return null;
-  }
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-api-key-dropdown]')) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showDropdown]);
 
   return (
-    <div className={cn(
-      "mb-4 rounded-xl border transition-all",
-      hasKey 
-        ? "bg-green-500/10 border-green-500/30" 
-        : "bg-amber-500/10 border-amber-500/30"
-    )}>
-      <div className="p-4">
+    <div className="relative" data-api-key-dropdown>
+      {/* Compact Button */}
+      <button
+        onClick={() => setShowDropdown(!showDropdown)}
+        className={cn(
+          "flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm",
+          hasKey
+            ? "bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-300"
+            : "bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-300"
+        )}
+      >
+        {hasKey ? (
+          <Check className="w-4 h-4" />
+        ) : (
+          <AlertCircle className="w-4 h-4" />
+        )}
+        <Key className="w-4 h-4" />
+        <span>{hasKey ? 'API Key Connected' : 'API Key Required'}</span>
+        <ChevronDown className={cn("w-4 h-4 transition-transform", showDropdown && "rotate-180")} />
+      </button>
+
+      {/* Dropdown Panel */}
+      {showDropdown && (
+        <div className="absolute top-full right-0 mt-2 w-96 bg-gray-900 border border-white/20 rounded-xl shadow-2xl z-50 overflow-hidden">
+          <div className="p-4">
         {/* Header */}
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <div className={cn(
-              "p-2 rounded-lg",
-              hasKey ? "bg-green-500/20" : "bg-amber-500/20"
-            )}>
-              {hasKey ? (
-                <Check className="w-5 h-5 text-green-400" />
-              ) : (
-                <AlertCircle className="w-5 h-5 text-amber-400" />
-              )}
-            </div>
-            <div>
-              <h3 className="font-semibold text-white flex items-center gap-2">
-                <Key className="w-4 h-4" />
-                {hasKey ? 'API Key Connected' : 'OpenRouter API Key Required'}
-              </h3>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {hasKey 
-                  ? 'Your key is stored locally in your browser' 
-                  : 'Get your free API key from OpenRouter to start generating'}
-              </p>
-            </div>
-          </div>
-          {hasKey && (
-            <button
-              onClick={() => setShowBanner(false)}
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
+        <div className="mb-3">
+          <h3 className="font-semibold text-white text-sm mb-1">
+            {hasKey ? 'API Key Status' : 'OpenRouter API Key Required'}
+          </h3>
+          <p className="text-xs text-gray-400">
+            {hasKey 
+              ? 'Your key is stored locally in your browser' 
+              : 'Get your free API key from OpenRouter to start generating'}
+          </p>
         </div>
 
         {/* Input Section */}
-        {showInput && !hasKey && (
+        {!hasKey && (
           <div className="space-y-3">
             <div>
               <input
@@ -157,31 +151,33 @@ export function ApiKeyInput() {
 
         {/* Key Status */}
         {hasKey && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleChange}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/20 rounded-lg text-white text-xs transition-colors"
-            >
-              Change Key
-            </button>
-            <button
-              onClick={handleRemove}
-              className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-xs transition-colors"
-            >
-              Remove Key
-            </button>
-            <a
-              href="https://openrouter.ai/activity"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/20 rounded-lg text-white text-xs transition-colors ml-auto"
-            >
-              View Usage
-              <ExternalLink className="w-3 h-3" />
-            </a>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs text-gray-400 bg-green-500/10 px-3 py-2 rounded-lg">
+              <span>✓ Key saved in browser</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleRemove}
+                className="flex items-center gap-1 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-xs transition-colors"
+              >
+                <X className="w-3 h-3" />
+                Remove Key
+              </button>
+              <a
+                href="https://openrouter.ai/activity"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/20 rounded-lg text-white text-xs transition-colors ml-auto"
+              >
+                View Usage
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
           </div>
         )}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
