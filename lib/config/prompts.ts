@@ -38,6 +38,7 @@ interface StoryIdeaParams {
   genre: string;
   tone: string;
   complexity: string;
+  keywords?: string;
 }
 
 export const PROMPTS = {
@@ -393,7 +394,7 @@ Output MUST be valid JSON:
 Be objective but not overly critical. The image should pass if it's reasonable quality and mostly matches requirements.`;
   },
 
-  storyIdea: ({ genre, tone, complexity }: StoryIdeaParams) => {
+  storyIdea: ({ genre, tone, complexity, keywords }: StoryIdeaParams) => {
     const complexityMap = {
       simple: { chars: '2-3', scenes: '3-4' },
       standard: { chars: '3-4', scenes: '5-6' },
@@ -408,7 +409,19 @@ Be objective but not overly critical. The image should pass if it's reasonable q
     };
     const toneDesc = toneDescriptions[tone as keyof typeof toneDescriptions] || toneDescriptions.balanced;
 
-    return `Generate a creative and engaging anime story idea in the ${genre} genre with a ${toneDesc} tone.
+    const keywordsSection = keywords ? `
+
+IMPORTANT - USER KEYWORDS/THEME:
+"${keywords}"
+
+The story MUST incorporate these keywords/themes. If the keywords mention specific characters (like "avengers", "superheros", etc.), include similar character archetypes. If they mention scenarios (like "fight scene", "romance", "mystery"), make that the central focus of the story.
+
+Examples:
+- "avengers fight scene" → Create a story with superhero team fighting a powerful villain
+- "magical school" → Story set in a school for magic users
+- "space pirates" → Adventure story with pirates in space setting` : '';
+
+    return `Generate a creative and engaging anime story idea in the ${genre} genre with a ${toneDesc} tone.${keywordsSection}
 
 Be imaginative and diverse in your suggestions.
 

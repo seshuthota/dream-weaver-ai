@@ -8,6 +8,7 @@ interface IdeaRequest {
   genre?: string;
   tone?: string;
   complexity?: string;
+  keywords?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -30,10 +31,11 @@ export async function POST(request: NextRequest) {
     const { 
       genre = 'fantasy', 
       tone = 'balanced', 
-      complexity = 'standard' 
+      complexity = 'standard',
+      keywords
     } = body;
 
-    const prompt = PROMPTS.storyIdea({ genre, tone, complexity });
+    const prompt = PROMPTS.storyIdea({ genre, tone, complexity, keywords });
     const client = createOpenRouterClient(apiKey);
     const response = await client.generateText(MODELS.story.model, prompt);
 

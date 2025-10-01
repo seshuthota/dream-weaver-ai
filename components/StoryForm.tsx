@@ -35,6 +35,7 @@ export function StoryForm({ onSubmit, isGenerating, initialInput }: StoryFormPro
   const [ideaGenre, setIdeaGenre] = useState('fantasy');
   const [ideaTone, setIdeaTone] = useState('balanced');
   const [ideaComplexity, setIdeaComplexity] = useState('standard');
+  const [ideaKeywords, setIdeaKeywords] = useState('');
 
   // Load initial input when provided (from history)
   useEffect(() => {
@@ -85,6 +86,7 @@ export function StoryForm({ onSubmit, isGenerating, initialInput }: StoryFormPro
           genre: ideaGenre,
           tone: ideaTone,
           complexity: ideaComplexity,
+          keywords: ideaKeywords.trim() || undefined,
         }),
       });
 
@@ -150,6 +152,24 @@ export function StoryForm({ onSubmit, isGenerating, initialInput }: StoryFormPro
 
         {showIdeaOptions && (
           <div className="space-y-3 mb-3">
+            {/* Keywords Input */}
+            <div>
+              <label className="block text-xs font-medium text-gray-300 mb-1.5">
+                Keywords or Theme <span className="text-gray-500">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                value={ideaKeywords}
+                onChange={(e) => setIdeaKeywords(e.target.value)}
+                placeholder="e.g., 'avengers fight scene', 'magical school', 'space pirates'..."
+                className="w-full px-3 py-2 text-xs bg-black/40 border border-white/20 rounded text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                disabled={isGeneratingIdea || isGenerating}
+              />
+              <p className="text-[10px] text-gray-500 mt-1">
+                Describe what you want - characters, setting, or scenario
+              </p>
+            </div>
+
             {/* Genre Selection */}
             <div>
               <label className="block text-xs font-medium text-gray-300 mb-1.5">Genre</label>
