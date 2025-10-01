@@ -411,23 +411,30 @@ Be objective but not overly critical. The image should pass if it's reasonable q
 
     const keywordsSection = keywords ? `
 
-IMPORTANT - USER KEYWORDS/THEME:
+CRITICAL - USER KEYWORDS/THEME:
 "${keywords}"
 
-The story MUST incorporate these keywords/themes. If the keywords mention specific characters (like "avengers", "superheros", etc.), include similar character archetypes. If they mention scenarios (like "fight scene", "romance", "mystery"), make that the central focus of the story.
+MANDATORY REQUIREMENTS:
+1. If the keywords contain SPECIFIC CHARACTER NAMES (like "Thor", "Iron Man", "Naruto", etc.), you MUST use those EXACT names in the story - do NOT rename or change them
+2. If the keywords mention specific scenarios (like "fighting", "battle", "romance"), make that the CENTRAL plot element
+3. If the keywords mention settings (like "space", "school", "city"), set the story there
+4. The story outline and character list must DIRECTLY reflect what the user specified
 
 Examples:
-- "avengers fight scene" → Create a story with superhero team fighting a powerful villain
-- "magical school" → Story set in a school for magic users
-- "space pirates" → Adventure story with pirates in space setting` : '';
+- "Thor fighting Iron Man" → Story about Thor and Iron Man in combat (use exact names)
+- "Naruto vs Sasuke" → Story featuring Naruto and Sasuke (use exact names)
+- "magical school adventure" → Story set in a magical school
+- "space pirates treasure hunt" → Pirates in space searching for treasure
+
+DO NOT create similar/inspired characters - use the EXACT names and elements from the keywords.` : '';
 
     return `Generate a creative and engaging anime story idea in the ${genre} genre with a ${toneDesc} tone.${keywordsSection}
 
 Be imaginative and diverse in your suggestions.
 
 Requirements:
-1. Story outline: 2-3 sentences with an engaging hook and interesting premise that fits the ${genre} genre and ${tone} tone
-2. Characters: ${chars} unique characters with distinct personalities and traits that suit the ${tone} atmosphere
+1. Story outline: 2-3 sentences with an engaging hook and interesting premise that fits the ${genre} genre and ${tone} tone${keywords ? ` and DIRECTLY incorporates "${keywords}"` : ''}
+2. Characters: ${chars} unique characters with distinct personalities and traits that suit the ${tone} atmosphere${keywords ? ` - IF keywords specify character names (like "Thor", "Goku", etc.), use those EXACT names, do NOT modify them` : ''}
 3. Style: Choose the most fitting anime style for this ${genre} story (consider shoujo, shounen, seinen, slice-of-life, fantasy, sci-fi)
 4. Scene count: ${scenes} scenes based on ${complexity} complexity
 
@@ -435,16 +442,18 @@ Available styles: shoujo, shounen, seinen, slice-of-life, fantasy, sci-fi
 
 Output MUST be valid JSON in this exact format:
 {
-  "outline": "A compelling 2-3 sentence story premise that matches the ${genre} genre and ${tone} tone",
+  "outline": "A compelling 2-3 sentence story premise that matches the ${genre} genre and ${tone} tone${keywords ? ` and incorporates ${keywords}` : ''}",
   "characters": [
     {
-      "name": "Character Name",
+      "name": "${keywords ? 'EXACT character name from keywords if specified, otherwise' : ''} Character Name",
       "traits": "personality, appearance, special abilities or characteristics fitting the ${tone} tone"
     }
   ],
   "style": "one of the available styles that best fits ${genre}",
   "scenes": number between ${scenes.split('-')[0]} and ${scenes.split('-')[1]}
 }
+
+${keywords ? `REMINDER: If "${keywords}" contains character names like "Thor", "Iron Man", "Goku", etc., the "name" field MUST use those EXACT names. Do NOT rename them to "Toru", "Iro", or similar variations.` : ''}
 
 GENRE FOCUS: ${genre}
 TONE: ${tone} (${toneDesc})
