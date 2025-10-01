@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
         const imageResults = await Promise.allSettled(imagePromises);
 
         // Process results and save images
-        const generatedScenes = [];
+        const generatedScenes: any[] = [];
         for (let i = 0; i < imageResults.length; i++) {
           const result = imageResults[i];
           const scene = scenes[i];
