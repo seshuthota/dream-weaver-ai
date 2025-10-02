@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import pLimit from 'p-limit';
-import type { AnimeInput, GenerationProgress, Scene } from '@/types';
+import type { AnimeInput, GenerationProgress, Scene, ModelSelection } from '@/types';
 import {
   generateCompleteStory,
   generateImage,
@@ -16,6 +16,7 @@ import {
 import { getApiKey, requireApiKey } from '@/lib/apiKeyManager';
 import { calculateCost, formatCost } from '@/lib/utils';
 import { getPreset } from '@/lib/config/presets';
+import { getActiveModels } from '@/lib/config/models';
 
 export async function POST(request: NextRequest) {
   const input: AnimeInput = await request.json();
@@ -37,6 +38,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Get model selection from header
+  let modelSelection: ModelSelection | undefined;
+  const modelSelectionHeader = request.headers.get('x-model-selection');
+  if (modelSelectionHeader) {
+    try {
+      modelSelection = JSON.parse(modelSelectionHeader);
+    } catch {
+      modelSelection = undefined;
+    }
+  }
+  const activeModels = getActiveModels(modelSelection);
+
   // Get quality preset settings
   const preset = getPreset(input.qualityPreset);
 
@@ -55,7 +68,7 @@ export async function POST(request: NextRequest) {
           message: '🎬 Generating complete story with all scenes...',
         });
 
-        const { characters, script, scenes } = await generateCompleteStory(input, apiKey);
+        const { characters, script, scenes } = await generateCompleteStory(input, apiKey, activeModels.textModel);
 
         const totalScenes = scenes.length;
         const estimatedCost = calculateCost(totalScenes, preset.costMultiplier);
@@ -112,7 +125,7 @@ export async function POST(request: NextRequest) {
               console.log(`Retry ${attempts} for ${scene.id}: Adding angle variation and quality keywords`);
             }
 
-            imageResult = await generateImage(modifiedPrompt, apiKey);
+            imageResult = await generateImage(modifiedPrompt, apiKey, activeModels.imageModel);
             if (imageResult.success) break;
             attempts++;
           }
@@ -270,7 +283,7 @@ export async function POST(request: NextRequest) {
               setTimeout(() => reject(new Error('Verification timeout (15s)')), 15000)
             );
             
-            const verifyPromise = verifyImage(tempDataForVerification[index], scene, characters, apiKey);
+            const verifyPromise = verifyImage(tempDataForVerification[index], scene, characters, apiKey, activeModels.verificationModel);
             
             const verification = await Promise.race([verifyPromise, timeoutPromise]);
             

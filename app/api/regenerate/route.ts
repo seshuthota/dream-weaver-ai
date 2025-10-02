@@ -1,8 +1,9 @@
 import { NextRequest } from 'next/server';
-import type { Scene, CharacterProfile, ImagePrompt } from '@/types';
+import type { Scene, CharacterProfile, ImagePrompt, ModelSelection } from '@/types';
 import { generateImage, verifyImage } from '@/lib/generators';
 import { saveImage, generateImageFilename } from '@/lib/storage';
 import { getApiKey, requireApiKey } from '@/lib/apiKeyManager';
+import { getActiveModels } from '@/lib/config/models';
 
 interface RegenerateRequest {
   scene: Scene;
@@ -32,6 +33,18 @@ export async function POST(request: NextRequest) {
       }
     );
   }
+
+  // Get model selection from header
+  let modelSelection: ModelSelection | undefined;
+  const modelSelectionHeader = request.headers.get('x-model-selection');
+  if (modelSelectionHeader) {
+    try {
+      modelSelection = JSON.parse(modelSelectionHeader);
+    } catch {
+      modelSelection = undefined;
+    }
+  }
+  const activeModels = getActiveModels(modelSelection);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -81,7 +94,7 @@ export async function POST(request: NextRequest) {
             modifiedPrompt.positive_prompt += ', ultra detailed, 8k masterpiece, alternative angle, professional lighting';
           }
 
-          imageResult = await generateImage(modifiedPrompt, apiKey);
+          imageResult = await generateImage(modifiedPrompt, apiKey, activeModels.imageModel);
           if (imageResult.success) break;
           attempts++;
 
@@ -115,7 +128,7 @@ export async function POST(request: NextRequest) {
         // Optional verification
         let verification = null;
         try {
-          verification = await verifyImage(imageResult.imageData!, scene, characters, apiKey);
+          verification = await verifyImage(imageResult.imageData!, scene, characters, apiKey, activeModels.verificationModel);
         } catch (error) {
           console.log('Verification skipped:', error);
         }
