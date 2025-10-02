@@ -149,7 +149,7 @@ Output MUST be valid JSON in this EXACT format:
       "visual_elements": ["element1", "element2"],
       "dialogue": "Character Name: Their dialogue line",
       "image_prompt": "COMPLETE detailed technical prompt for image generation: masterpiece, high quality ${input.comicMode ? 'comic manga panel with speech bubbles' : 'anime art'}, [character name] with [full appearance details] wearing [outfit details], [specific action/pose], [detailed setting], [lighting], [mood], ${input.style} style${input.comicMode ? ', speech bubble at [position] with text [exact dialogue], sound effect [text] at [position]' : ''}, professional anime production, vibrant colors",
-      "negative_prompt": "blurry, low quality, deformed, disfigured, ugly, bad anatomy, extra limbs, watermark, signature, amateur, inconsistent style, multiple art styles, distorted faces, mutated hands"
+      "negative_prompt": "blurry, out of focus, low quality, low resolution, deformed, disfigured, ugly, bad anatomy, incorrect anatomy, extra limbs, missing limbs, extra fingers, missing fingers, fused fingers, mutated hands, poorly drawn hands, poorly drawn face, watermark, signature, text overlay, username, artist name, logo, amateur, inconsistent style, multiple conflicting art styles, distorted faces, asymmetrical eyes, misaligned eyes, crooked mouth, incorrect proportions, flat lighting, washed out colors, oversaturated, jpeg artifacts, compression artifacts, pixelated, grainy, noise, duplicate characters, cloned elements, floating limbs, disconnected body parts, unnatural pose, stiff pose, broken anatomy, malformed features"
     }
   ]
 }
@@ -270,12 +270,12 @@ Choose the most visually impactful and story-important scenes.`;
       .join('\n');
 
     const styleGuides: Record<string, string> = {
-      shoujo: 'sparkles and flowers in background, soft lighting, pastel colors, large expressive eyes with detailed highlights, delicate linework, romantic atmosphere',
-      shounen: 'dynamic action pose, bold lines, dramatic lighting with strong shadows, intense expressions, energy effects, vibrant colors, sense of motion',
-      seinen: 'realistic proportions, detailed backgrounds, sophisticated color palette, mature atmosphere, subtle shading, professional anime art',
-      josei: 'elegant character designs, natural proportions, refined color choices, realistic emotional expressions, detailed fashion and accessories',
-      kodomomuke: 'bright cheerful colors, simple rounded designs, wholesome atmosphere, clear expressions, friendly character interactions',
-      isekai: 'fantasy elements, magical atmosphere, RPG-style details, adventurous composition, fantasy architecture or nature'
+      shoujo: 'sparkles and flowers in background, soft diffused lighting (6500K warm color temperature), pastel color palette with pink and lavender tones, large expressive eyes with detailed star-shaped highlights, delicate fine linework, romantic dreamy atmosphere, shallow depth of field with bokeh, gentle rim lighting from top-left',
+      shounen: 'dynamic action pose with motion blur effects, bold thick lines, dramatic high-contrast lighting (4000K cool color temperature) from top-right with sharp crisp shadows, intense determined expressions, vibrant energy effects with outer glow, saturated primary colors, strong sense of motion and speed, eye-level to low-angle camera perspective for heroic feel',
+      seinen: 'realistic anatomical proportions, highly detailed photorealistic backgrounds with texture, sophisticated muted color palette with earthy tones, mature contemplative atmosphere, subtle cel shading with soft gradient shadows, professional anime cinematography, medium depth of field, natural lighting (5500K neutral color temperature) from camera left',
+      josei: 'elegant refined character designs, natural human proportions, refined color choices with complementary color harmonies, realistic nuanced emotional expressions, detailed high-fashion clothing and accessories with visible fabric textures (silk, cotton, leather), soft side lighting (6000K slightly warm), sophisticated balanced composition',
+      kodomomuke: 'bright cheerful saturated colors with high vibrance, simple rounded character designs with minimal detail, wholesome warm atmosphere, clear highly readable expressions, friendly character interactions with positive body language, flat even lighting (7000K bright daylight), high-angle camera view looking down, playful symmetrical composition',
+      isekai: 'fantasy magical elements with glowing particle effects, mystical atmospheric lighting with volumetric light rays, RPG-style magical details and glowing runes, adventurous dynamic composition with diagonal lines, fantasy architecture or enchanted nature setting, dramatic golden hour lighting (8500K warm sunset), epic cinematic low-angle perspective, 8K ultra-detailed rendering'
     };
 
     const styleEnhancement = styleGuides[style.toLowerCase()] || 'high-quality anime art, detailed character designs';
@@ -317,31 +317,34 @@ ANIME STYLE: ${style}
 Create a comprehensive prompt following this structure:
 
 1. MAIN SUBJECT & COMPOSITION:
+   - Camera angle/perspective: ${scene.mood.toLowerCase().includes('dramatic') || scene.mood.toLowerCase().includes('intense') || scene.mood.toLowerCase().includes('epic') ? 'low-angle (looking up) for dramatic/heroic feel' : scene.mood.toLowerCase().includes('cute') || scene.mood.toLowerCase().includes('wholesome') ? 'high-angle (looking down) for endearing feel' : 'eye-level for balanced natural perspective'}
    - Exact character positions and poses (foreground, midground, background)
-   - Character expressions and emotions (specific facial details)
-   - Body language and gestures
-   - Eye contact and character interactions
-   - Rule of thirds composition, depth of field
+   - Character expressions and emotions (specific facial details: eyebrow position, mouth shape, eye direction)
+   - Body language and gestures (hand positions, posture, weight distribution)
+   - Eye contact and character interactions (who's looking at whom, spatial relationships)
+   - Rule of thirds composition with balanced visual weight, leading lines, depth of field
 
-2. CHARACTER DETAILS:
-   - Hair (color, style, length, movement)
-   - Eyes (color, shape, expression, highlights, reflections)
-   - Clothing (exact colors, fabrics, accessories, wrinkles, details)
-   - Skin tone and features
-   - Unique identifiers from character profiles
+2. CHARACTER DETAILS (Exact Specifications):
+   - Hair: exact color with hex code if available, style, length, flow/movement direction, texture (smooth, wavy, spiky), individual strands visible
+   - Eyes: exact color with hex code, shape (almond, round, sharp), expression, star-shaped catchlights in pupils, reflections, eyelash detail
+   - Clothing: exact colors with material type (cotton t-shirt, leather jacket, silk dress), fabric textures visible, wrinkles and folds realistically placed, accessories with metallic/glossy finish
+   - Skin tone: specific shade (porcelain, tan, olive), smooth gradient shading, subtle blush on cheeks
+   - Unique identifiers from character profiles (scars, tattoos, jewelry, props) with precise placement
 
-3. BACKGROUND & SETTING:
-   - Specific location details (architecture, nature, interior)
-   - Environmental elements (props, furniture, plants)
-   - Atmospheric effects (weather, time of day)
-   - Depth layers (foreground, midground, background)
+3. BACKGROUND & SETTING (Environmental Details):
+   - Specific location details: architecture style (modern, traditional, fantasy), materials (brick, wood, glass), nature elements (trees, mountains, water bodies)
+   - Environmental elements: props with realistic textures, furniture with proper perspective, plants with detailed foliage
+   - Atmospheric effects: weather conditions (sunny, cloudy, rainy with visible droplets), time of day (morning golden light, midday harsh shadows, sunset warm glow, night with moon/artificial lights)
+   - Depth layers: detailed foreground elements (grass, stones), midground with main action, softly blurred background for depth
+   - Environmental lighting consistency: shadows cast by environment match lighting direction
 
-4. LIGHTING & COLOR:
-   - Light source direction and intensity
-   - Shadow placement and softness
-   - Color temperature (warm/cool)
-   - Color palette matching style and mood
-   - Highlights and reflections
+4. LIGHTING & COLOR (Be Specific):
+   - Light source direction (e.g., top-right, camera left, overhead) and intensity (soft/harsh)
+   - Shadow placement, hardness (sharp/soft), and color
+   - Color temperature in Kelvin (3000K cool blue, 5500K neutral, 8500K warm golden)
+   - Specific color palette matching style and mood (exact hues, saturation levels)
+   - Highlights and reflections (metallic, glossy surfaces, eye catchlights)
+   - Atmospheric lighting effects (volumetric rays, rim lighting, ambient occlusion)
 
 5. ANIME ART STYLE:
    - ${styleEnhancement}
@@ -350,12 +353,14 @@ Create a comprehensive prompt following this structure:
    - Specific anime art characteristics for ${style} style
    - Professional ${comicMode ? 'comic book/manga' : 'anime'} production quality
 
-6. TECHNICAL QUALITY:
-   - High resolution, masterpiece quality
-   - Professional ${comicMode ? 'comic book/manga panel' : 'anime screenshot'} aesthetic
-   - Detailed rendering, sharp focus
-   - Vibrant colors, proper color balance
-   ${comicMode ? '- Clear, readable text in speech bubbles and captions' : ''}
+6. TECHNICAL QUALITY & RENDERING:
+   - Ultra-high resolution: 8K quality, masterpiece-level detail
+   - Professional ${comicMode ? 'comic book/manga panel' : 'anime screenshot'} aesthetic with production-grade finish
+   - Detailed rendering with sharp focus on subjects, ${scene.mood.toLowerCase().includes('dramatic') || scene.mood.toLowerCase().includes('intense') ? 'focused depth of field with background blur' : 'balanced depth of field'}
+   - Vibrant saturated colors with proper color balance and color grading
+   - Crisp clean linework with anti-aliasing, smooth gradients
+   - Photorealistic textures for materials (fabric, metal, wood, skin)
+   ${comicMode ? '- Clear, readable bold text in speech bubbles and captions (minimum 24pt equivalent)' : '- Cel-shaded rendering with distinct highlights and shadows'}
 
 CRITICAL REQUIREMENTS:
 - Maintain exact character consistency (hair, eyes, outfit colors)
@@ -369,11 +374,13 @@ ${comicMode ? '- TEXT MUST BE BAKED INTO THE IMAGE (speech bubbles, sound effect
 
 Output MUST be valid JSON:
 {
-  "positive_prompt": "masterpiece, high quality ${comicMode ? 'comic book manga panel with speech bubbles and text' : 'anime art'}, [detailed prompt following the structure above], professional ${comicMode ? 'comic book manga panel' : 'anime'} production, vibrant colors, clean linework, ${comicMode ? 'readable text in speech bubbles, ' : 'cel shading, '}${style} style ${comicMode ? 'comic manga' : 'anime'}",
+  "positive_prompt": "8K ultra-detailed masterpiece, high quality ${comicMode ? 'comic book manga panel with speech bubbles and text' : 'professional anime art'}, [detailed prompt following ALL 6 sections above with specific technical details], professional ${comicMode ? 'comic book manga panel' : 'anime'} production with photorealistic textures, vibrant saturated colors with proper color grading, crisp clean linework with anti-aliasing, ${comicMode ? 'readable bold text in speech bubbles (24pt+), ' : 'cel shading with distinct highlights and shadows, '}${style} style ${comicMode ? 'comic manga' : 'anime'}, sharp focus, proper depth of field, cinematic composition",
   "scene_id": "${scene.id}",
   "technical_params": {
     "aspect_ratio": "16:9",
-    "style_emphasis": "${style} ${comicMode ? 'comic/manga' : 'anime'} aesthetic with ${styleEnhancement}${comicMode ? ' and comic book text elements' : ''}"
+    "resolution": "8K",
+    "style_emphasis": "${style} ${comicMode ? 'comic/manga' : 'anime'} aesthetic with ${styleEnhancement}${comicMode ? ' and comic book text elements' : ''}",
+    "rendering_quality": "masterpiece-level detail, photorealistic textures, production-grade finish"
   }
 }
 
