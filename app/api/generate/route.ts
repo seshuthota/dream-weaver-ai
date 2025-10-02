@@ -15,6 +15,7 @@ import {
 } from '@/lib/storage';
 import { getApiKey, requireApiKey } from '@/lib/apiKeyManager';
 import { calculateCost, formatCost } from '@/lib/utils';
+import { getPreset } from '@/lib/config/presets';
 
 export async function POST(request: NextRequest) {
   const input: AnimeInput = await request.json();
@@ -25,9 +26,9 @@ export async function POST(request: NextRequest) {
     requireApiKey(apiKey);
   } catch (error) {
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: error instanceof Error ? error.message : 'API key required',
-        code: 'API_KEY_REQUIRED' 
+        code: 'API_KEY_REQUIRED'
       }),
       {
         status: 401,
@@ -35,6 +36,9 @@ export async function POST(request: NextRequest) {
       }
     );
   }
+
+  // Get quality preset settings
+  const preset = getPreset(input.qualityPreset);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -54,7 +58,7 @@ export async function POST(request: NextRequest) {
         const { characters, script, scenes } = await generateCompleteStory(input, apiKey);
 
         const totalScenes = scenes.length;
-        const estimatedCost = calculateCost(totalScenes);
+        const estimatedCost = calculateCost(totalScenes, preset.costMultiplier);
 
         sendProgress({
           stage: 'story',
@@ -92,7 +96,7 @@ export async function POST(request: NextRequest) {
           // Attempt generation with retries and smart prompt variation
           let imageResult;
           let attempts = 0;
-          const maxAttempts = 3;
+          const maxAttempts = preset.maxRetries;
 
           while (attempts < maxAttempts) {
             // Add quality boosters and variations on retry attempts
@@ -209,7 +213,7 @@ export async function POST(request: NextRequest) {
         }
 
         // SEND RESULTS IMMEDIATELY - Don't wait for verification!
-        const actualCost = calculateCost(generatedScenes.filter(s => s.image_url).length);
+        const actualCost = calculateCost(generatedScenes.filter(s => s.image_url).length, preset.costMultiplier);
 
         const preliminaryResult = {
           script,
@@ -234,19 +238,25 @@ export async function POST(request: NextRequest) {
         sendProgress({
           stage: 'images_complete',
           progress: 80,
-          message: '✅ All images ready! Starting optional quality verification...',
+          message: preset.skipVerification
+            ? '✅ All images ready! Skipping quality verification (draft mode)...'
+            : '✅ All images ready! Starting optional quality verification...',
           data: preliminaryResult,
         });
 
         // OPTIONAL VERIFICATION - Run in background, don't block results
-        sendProgress({
-          stage: 'verification',
-          progress: 85,
-          totalScenes,
-          message: `🔍 Running quality checks (optional)...`,
-        });
+        // Skip verification if preset says so (e.g., draft mode)
+        let verificationsOrTimeout: any[] = [];
 
-        let completedVerifications = 0;
+        if (!preset.skipVerification) {
+          sendProgress({
+            stage: 'verification',
+            progress: 85,
+            totalScenes,
+            message: `🔍 Running quality checks (optional)...`,
+          });
+
+          let completedVerifications = 0;
 
         // Start verification but with timeout protection
         const verifyWithTimeout = async (genScene: any, scene: Scene, index: number) => {
@@ -297,19 +307,20 @@ export async function POST(request: NextRequest) {
           }
         };
 
-        const verifyPromises = generatedScenes.map((genScene, index) =>
-          verifyWithTimeout(genScene, scenes[index], index)
-        );
+          const verifyPromises = generatedScenes.map((genScene, index) =>
+            verifyWithTimeout(genScene, scenes[index], index)
+          );
 
-        // Wait for verifications with overall timeout
-        const verificationTimeout = new Promise((resolve) => 
-          setTimeout(() => resolve([]), 30000) // 30s max for all verifications
-        );
-        
-        const verificationsOrTimeout = await Promise.race([
-          Promise.allSettled(verifyPromises),
-          verificationTimeout
-        ]);
+          // Wait for verifications with overall timeout
+          const verificationTimeout = new Promise((resolve) =>
+            setTimeout(() => resolve([]), 30000) // 30s max for all verifications
+          );
+
+          verificationsOrTimeout = await Promise.race([
+            Promise.allSettled(verifyPromises),
+            verificationTimeout
+          ]) as any[];
+        }
 
         // Add verifications if completed
         if (Array.isArray(verificationsOrTimeout)) {

@@ -14,19 +14,21 @@ const COST_PER_SCENE = 0.07;
 /**
  * Calculate cost and return as number
  * @param numScenes - Number of scenes to generate
+ * @param multiplier - Cost multiplier (default 1.0)
  * @returns Cost as a number
  */
-export function calculateCost(numScenes: number): number {
-  return numScenes * COST_PER_SCENE;
+export function calculateCost(numScenes: number, multiplier: number = 1.0): number {
+  return numScenes * COST_PER_SCENE * multiplier;
 }
 
 /**
  * Calculate cost and return as formatted string
  * @param numScenes - Number of scenes to generate
+ * @param multiplier - Cost multiplier (default 1.0)
  * @returns Formatted cost string (e.g., "$0.21")
  */
-export function estimateCost(numScenes: number): string {
-  return formatCost(calculateCost(numScenes));
+export function estimateCost(numScenes: number, multiplier: number = 1.0): string {
+  return formatCost(calculateCost(numScenes, multiplier));
 }
 
 /**

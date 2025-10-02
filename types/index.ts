@@ -10,6 +10,7 @@ export interface AnimeInput {
   episodes: number;
   scenes_per_episode: number;
   comicMode?: boolean;
+  qualityPreset?: 'draft' | 'standard' | 'premium';
 }
 
 export interface CharacterProfile {
@@ -100,7 +101,7 @@ export interface Preset {
 
 export interface HistoryEntry {
   id: string;
-  timestamp: string;
+  timestamp: number; // Changed from string to number for IndexedDB indexing
   input: AnimeInput;
   result: GenerationResult;
   thumbnail: string;

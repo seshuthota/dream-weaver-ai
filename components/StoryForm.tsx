@@ -5,6 +5,7 @@ import { Plus, X, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import type { AnimeInput, Character } from '@/types';
 import { cn, estimateCost } from '@/lib/utils';
 import { clientApiKey } from '@/lib/apiKeyManager';
+import { getAllPresets, getPreset, type QualityPresetId } from '@/lib/config/presets';
 
 interface StoryFormProps {
   onSubmit: (input: AnimeInput) => void;
@@ -30,6 +31,7 @@ export function StoryForm({ onSubmit, isGenerating, initialInput }: StoryFormPro
   const [scenesCount, setScenesCount] = useState(3);
   const [showCharacters, setShowCharacters] = useState(true);
   const [comicMode, setComicMode] = useState(false);
+  const [qualityPreset, setQualityPreset] = useState<QualityPresetId>('standard');
   const [isGeneratingIdea, setIsGeneratingIdea] = useState(false);
   const [showIdeaOptions, setShowIdeaOptions] = useState(false);
   const [ideaGenre, setIdeaGenre] = useState('fantasy');
@@ -45,6 +47,7 @@ export function StoryForm({ onSubmit, isGenerating, initialInput }: StoryFormPro
       setStyle(initialInput.style);
       setScenesCount(initialInput.scenes_per_episode);
       setComicMode(initialInput.comicMode || false);
+      setQualityPreset(initialInput.qualityPreset || 'standard');
     }
   }, [initialInput]);
 
@@ -127,17 +130,19 @@ export function StoryForm({ onSubmit, isGenerating, initialInput }: StoryFormPro
       episodes: 1,
       scenes_per_episode: scenesCount,
       comicMode,
+      qualityPreset,
     };
 
     onSubmit(input);
   };
 
-  const estimatedCost = estimateCost(scenesCount);
+  const selectedPreset = getPreset(qualityPreset);
+  const estimatedCost = estimateCost(scenesCount, selectedPreset.costMultiplier);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* AI Generate Story Section */}
-      <div className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/30 rounded-lg p-3">
+      <div className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/30 rounded-lg p-3 relative">
         <div className="flex items-center justify-between mb-2">
           <button
             type="button"
@@ -151,7 +156,7 @@ export function StoryForm({ onSubmit, isGenerating, initialInput }: StoryFormPro
         </div>
 
         {showIdeaOptions && (
-          <div className="space-y-3 mb-3">
+          <div className="space-y-3 mb-3 relative z-0">
             {/* Keywords Input */}
             <div>
               <label className="block text-xs font-medium text-gray-300 mb-1.5">
@@ -280,6 +285,65 @@ export function StoryForm({ onSubmit, isGenerating, initialInput }: StoryFormPro
             </>
           )}
         </button>
+      </div>
+
+      {/* Quality Preset Selection */}
+      <div className="relative z-20 mt-4">
+        <label className="block text-sm font-semibold mb-2 text-white">
+          ✨ Quality Preset
+        </label>
+        <div className="grid grid-cols-3 gap-2 relative z-20">
+          {getAllPresets().map((preset) => {
+            const isSelected = qualityPreset === preset.id;
+            let selectedClasses = '';
+            if (isSelected) {
+              if (preset.id === 'draft') {
+                selectedClasses = 'border-blue-500 bg-blue-500/30';
+              } else if (preset.id === 'standard') {
+                selectedClasses = 'border-purple-500 bg-purple-500/30';
+              } else if (preset.id === 'premium') {
+                selectedClasses = 'border-amber-500 bg-amber-500/30';
+              }
+            }
+
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Preset clicked:', preset.id);
+                  setQualityPreset(preset.id);
+                }}
+                disabled={isGenerating}
+                style={{ position: 'relative', zIndex: 25 }}
+                className={cn(
+                  "px-2 py-2 rounded-lg border transition-all flex flex-col items-center justify-center min-h-[80px]",
+                  isSelected
+                    ? selectedClasses
+                    : "border-white/20 bg-black/30 hover:border-white/40",
+                  isGenerating ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                )}
+              >
+                <div className="text-2xl mb-1 pointer-events-none">{preset.icon}</div>
+                <div className="text-xs font-bold text-white mb-1 pointer-events-none">{preset.name}</div>
+                <div className="text-[9px] font-medium text-gray-300 pointer-events-none">
+                  {preset.costMultiplier === 1 ? (
+                    <span>Standard</span>
+                  ) : preset.costMultiplier < 1 ? (
+                    <span className="text-green-400">-{Math.round((1 - preset.costMultiplier) * 100)}%</span>
+                  ) : (
+                    <span className="text-amber-400">+{Math.round((preset.costMultiplier - 1) * 100)}%</span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-2 text-[10px] text-gray-400 text-center">
+          {selectedPreset.description}
+        </div>
       </div>
 
       {/* Story Outline */}
