@@ -182,14 +182,14 @@ export async function generateImagePrompt(
   // Use cached character descriptions to reduce token usage
   const characterDescriptions = getCharacterDescriptions(scene.characters_present, characters);
 
-  // Style-specific enhancements
+  // Style-specific enhancements with technical lighting and composition specs
   const styleGuides: Record<string, string> = {
-    shoujo: 'sparkles and flowers in background, soft lighting, pastel colors, large expressive eyes with detailed highlights, delicate linework, romantic atmosphere',
-    shounen: 'dynamic action pose, bold lines, dramatic lighting with strong shadows, intense expressions, energy effects, vibrant colors, sense of motion',
-    seinen: 'realistic proportions, detailed backgrounds, sophisticated color palette, mature atmosphere, subtle shading, professional anime art',
-    josei: 'elegant character designs, natural proportions, refined color choices, realistic emotional expressions, detailed fashion and accessories',
-    kodomomuke: 'bright cheerful colors, simple rounded designs, wholesome atmosphere, clear expressions, friendly character interactions',
-    isekai: 'fantasy elements, magical atmosphere, RPG-style details, adventurous composition, fantasy architecture or nature'
+    shoujo: 'sparkles and flowers in background, soft diffused lighting (6500K warm color temperature), pastel color palette with pink and lavender tones, large expressive eyes with detailed star-shaped highlights, delicate fine linework, romantic dreamy atmosphere, shallow depth of field with bokeh, gentle rim lighting from top-left',
+    shounen: 'dynamic action pose with motion blur effects, bold thick lines, dramatic high-contrast lighting (4000K cool color temperature) from top-right with sharp crisp shadows, intense determined expressions, vibrant energy effects with outer glow, saturated primary colors, strong sense of motion and speed, eye-level to low-angle camera perspective for heroic feel',
+    seinen: 'realistic anatomical proportions, highly detailed photorealistic backgrounds with texture, sophisticated muted color palette with earthy tones, mature contemplative atmosphere, subtle cel shading with soft gradient shadows, professional anime cinematography, medium depth of field, natural lighting (5500K neutral color temperature) from camera left',
+    josei: 'elegant refined character designs, natural human proportions, refined color choices with complementary color harmonies, realistic nuanced emotional expressions, detailed high-fashion clothing and accessories with visible fabric textures (silk, cotton, leather), soft side lighting (6000K slightly warm), sophisticated balanced composition',
+    kodomomuke: 'bright cheerful saturated colors with high vibrance, simple rounded character designs with minimal detail, wholesome warm atmosphere, clear highly readable expressions, friendly character interactions with positive body language, flat even lighting (7000K bright daylight), high-angle camera view looking down, playful symmetrical composition',
+    isekai: 'fantasy magical elements with glowing particle effects, mystical atmospheric lighting with volumetric light rays, RPG-style magical details and glowing runes, adventurous dynamic composition with diagonal lines, fantasy architecture or enchanted nature setting, dramatic golden hour lighting (8500K warm sunset), epic cinematic low-angle perspective, 8K ultra-detailed rendering'
   };
 
   const styleEnhancement = styleGuides[style.toLowerCase()] || 'high-quality anime art, detailed character designs';
@@ -284,11 +284,13 @@ ${comicMode ? '- TEXT MUST BE BAKED INTO THE IMAGE (speech bubbles, sound effect
 
 Output MUST be valid JSON:
 {
-  "positive_prompt": "masterpiece, high quality ${comicMode ? 'comic book manga panel with speech bubbles and text' : 'anime art'}, [detailed prompt following the structure above], professional ${comicMode ? 'comic book manga panel' : 'anime'} production, vibrant colors, clean linework, ${comicMode ? 'readable text in speech bubbles, ' : 'cel shading, '}${style} style ${comicMode ? 'comic manga' : 'anime'}",
+  "positive_prompt": "8K ultra-detailed masterpiece, high quality ${comicMode ? 'comic book manga panel with speech bubbles and text' : 'professional anime art'}, [detailed prompt following ALL 6 sections above with specific technical details], professional ${comicMode ? 'comic book manga panel' : 'anime'} production with photorealistic textures, vibrant saturated colors with proper color grading, crisp clean linework with anti-aliasing, ${comicMode ? 'readable bold text in speech bubbles (24pt+), ' : 'cel shading with distinct highlights and shadows, '}${style} style ${comicMode ? 'comic manga' : 'anime'}, sharp focus, proper depth of field, cinematic composition",
   "scene_id": "${scene.id}",
   "technical_params": {
     "aspect_ratio": "16:9",
-    "style_emphasis": "${style} ${comicMode ? 'comic/manga' : 'anime'} aesthetic with ${styleEnhancement}${comicMode ? ' and comic book text elements' : ''}"
+    "resolution": "8K",
+    "style_emphasis": "${style} ${comicMode ? 'comic/manga' : 'anime'} aesthetic with ${styleEnhancement}${comicMode ? ' and comic book text elements' : ''}",
+    "rendering_quality": "masterpiece-level detail, photorealistic textures, production-grade finish"
   }
 }
 
