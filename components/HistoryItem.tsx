@@ -98,7 +98,7 @@ export function HistoryItem({ entry, onView, onEdit, onDelete }: HistoryItemProp
   );
 }
 
-function getTimeAgo(timestamp: string): string {
+function getTimeAgo(timestamp: number): string {
   const now = new Date();
   const past = new Date(timestamp);
   const diffMs = now.getTime() - past.getTime();

@@ -22,7 +22,11 @@ export default function Home() {
 
   useEffect(() => {
     // Update history count on mount and when result changes
-    setHistoryCount(getHistoryCount());
+    const updateCount = async () => {
+      const count = await getHistoryCount();
+      setHistoryCount(count);
+    };
+    updateCount();
   }, [result]);
 
   const handleGenerate = async (input: AnimeInput) => {
@@ -80,8 +84,10 @@ export default function Home() {
 
                 // Save to history only when fully complete
                 if (data.stage === 'complete' && currentInput) {
-                  saveToHistory(currentInput, generationResult);
-                  setHistoryCount(getHistoryCount());
+                  saveToHistory(currentInput, generationResult).then(async () => {
+                    const count = await getHistoryCount();
+                    setHistoryCount(count);
+                  });
                 }
               }
             } catch (e) {
@@ -112,6 +118,67 @@ export default function Home() {
     setCurrentInput(entry.input);
     setIsHistoryOpen(false);
     // Note: StoryForm needs to accept input prop to pre-fill
+  };
+
+  const handleRegenerateScene = async (sceneId: string, modifications?: string) => {
+    if (!result || !currentInput) return;
+
+    const scene = result.scenes.find(s => s.scene_id === sceneId);
+    if (!scene) return;
+
+    setIsGenerating(true);
+
+    try {
+      const apiKey = clientApiKey.get();
+      if (!apiKey) {
+        throw new Error('Please provide your OpenRouter API key');
+      }
+
+      // Build a basic prompt from scene description
+      const imagePrompt = scene.description || 'Anime scene';
+      const negativePrompt = 'blurry, low quality, distorted';
+
+      const response = await fetch('/api/regenerate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          scene: {
+            id: scene.scene_id,
+            description: scene.description,
+            characters_present: [],
+            setting: scene.setting || '',
+            mood: '',
+            visual_elements: []
+          },
+          characters: result.characters,
+          imagePrompt,
+          negativePrompt,
+          modifications,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Regeneration failed');
+      }
+
+      const regeneratedScene = await response.json();
+
+      // Update the result with the regenerated scene
+      setResult({
+        ...result,
+        scenes: result.scenes.map(s =>
+          s.scene_id === sceneId ? { ...s, ...regeneratedScene } : s
+        ),
+      });
+    } catch (error) {
+      console.error('Regeneration error:', error);
+      alert(error instanceof Error ? error.message : 'Failed to regenerate scene');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -163,7 +230,7 @@ export default function Home() {
             {(isGenerating || progress) && !result ? (
               <ProgressStream isGenerating={isGenerating} progress={progress} />
             ) : (
-              <AnimeViewer result={result} />
+              <AnimeViewer result={result} onRegenerateScene={handleRegenerateScene} />
             )}
           </div>
         </div>

@@ -1,15 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, Pause, RefreshCw } from 'lucide-react';
 import type { GenerationResult } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface SlideshowViewProps {
   result: GenerationResult;
+  onRegenerateScene?: (sceneId: string, modifications?: string) => Promise<void>;
 }
 
-export function SlideshowView({ result }: SlideshowViewProps) {
+export function SlideshowView({ result, onRegenerateScene }: SlideshowViewProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -149,6 +150,17 @@ export function SlideshowView({ result }: SlideshowViewProps) {
             </button>
           ))}
         </div>
+
+        {/* Regenerate Button */}
+        {onRegenerateScene && (
+          <button
+            onClick={() => onRegenerateScene(currentScene.scene_id)}
+            className="flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full transition-colors"
+            title="Regenerate this scene"
+          >
+            <RefreshCw className="w-5 h-5" />
+          </button>
+        )}
 
         {/* Play/Pause */}
         <button

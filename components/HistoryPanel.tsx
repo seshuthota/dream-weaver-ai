@@ -25,30 +25,31 @@ export function HistoryPanel({ isOpen, onClose, onView, onEdit }: HistoryPanelPr
     }
   }, [isOpen]);
 
-  const loadHistory = () => {
-    const entries = getHistory();
+  const loadHistory = async () => {
+    const entries = await getHistory();
     setHistory(entries);
-    setStorageSize(getStorageSize());
+    const size = await getStorageSize();
+    setStorageSize(size);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Delete this generation from history?')) {
-      deleteHistoryEntry(id);
+      await deleteHistoryEntry(id);
       loadHistory();
     }
   };
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (confirm(`Delete all ${history.length} generations from history? This cannot be undone.`)) {
-      clearHistory();
+      await clearHistory();
       loadHistory();
     }
   };
 
-  const handleSearch = (query: string) => {
+  const handleSearch = async (query: string) => {
     setSearchQuery(query);
     if (query.trim()) {
-      const results = searchHistory(query);
+      const results = await searchHistory(query);
       setHistory(results);
     } else {
       loadHistory();

@@ -1,20 +1,49 @@
 import type { HistoryEntry, AnimeInput, GenerationResult } from '@/types';
+import {
+  getAllHistoryEntries,
+  saveHistoryEntry,
+  deleteHistoryEntry as deleteHistoryEntryDB,
+  clearAllHistory,
+  getHistoryCount as getHistoryCountDB,
+  migrateFromLocalStorage,
+} from './db';
 
-const HISTORY_KEY = 'anime-maker-history';
 const MAX_ENTRIES = 20;
 
+// Auto-migrate on first load
+let migrationDone = false;
+
 /**
- * Get all history entries from localStorage
+ * Reset migration flag (for testing)
  */
-export function getHistory(): HistoryEntry[] {
+export function resetMigration() {
+  migrationDone = false;
+}
+
+async function ensureMigration() {
+  if (migrationDone || typeof window === 'undefined') return;
+
+  try {
+    const migratedCount = await migrateFromLocalStorage();
+    if (migratedCount > 0) {
+      console.log(`✅ Migrated ${migratedCount} history entries to IndexedDB`);
+    }
+    migrationDone = true;
+  } catch (error) {
+    console.error('Migration error:', error);
+    migrationDone = true; // Don't retry on error
+  }
+}
+
+/**
+ * Get all history entries from IndexedDB
+ */
+export async function getHistory(): Promise<HistoryEntry[]> {
   if (typeof window === 'undefined') return [];
 
   try {
-    const stored = localStorage.getItem(HISTORY_KEY);
-    if (!stored) return [];
-
-    const entries: HistoryEntry[] = JSON.parse(stored);
-    return entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    await ensureMigration();
+    return await getAllHistoryEntries();
   } catch (error) {
     console.error('Error loading history:', error);
     return [];
@@ -24,19 +53,19 @@ export function getHistory(): HistoryEntry[] {
 /**
  * Get a single history entry by ID
  */
-export function getHistoryEntry(id: string): HistoryEntry | null {
-  const history = getHistory();
+export async function getHistoryEntry(id: string): Promise<HistoryEntry | null> {
+  const history = await getHistory();
   return history.find(entry => entry.id === id) || null;
 }
 
 /**
  * Save a new generation to history
  */
-export function saveToHistory(input: AnimeInput, result: GenerationResult): string {
+export async function saveToHistory(input: AnimeInput, result: GenerationResult): Promise<string> {
   if (typeof window === 'undefined') return '';
 
   try {
-    const history = getHistory();
+    await ensureMigration();
 
     // Generate title from outline (first 50 chars)
     const title = input.outline.substring(0, 50) + (input.outline.length > 50 ? '...' : '');
@@ -47,23 +76,24 @@ export function saveToHistory(input: AnimeInput, result: GenerationResult): stri
     // Create new entry
     const entry: HistoryEntry = {
       id: Date.now().toString(),
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
       input,
       result,
       thumbnail,
       title,
     };
 
-    // Add to beginning of array
-    history.unshift(entry);
+    // Save to IndexedDB
+    await saveHistoryEntry(entry);
 
-    // Limit to MAX_ENTRIES (delete oldest)
+    // Clean up old entries if exceeding MAX_ENTRIES
+    const history = await getAllHistoryEntries();
     if (history.length > MAX_ENTRIES) {
-      history.splice(MAX_ENTRIES);
+      const entriesToDelete = history.slice(MAX_ENTRIES);
+      for (const oldEntry of entriesToDelete) {
+        await deleteHistoryEntryDB(oldEntry.id);
+      }
     }
-
-    // Save to localStorage
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
 
     return entry.id;
   } catch (error) {
@@ -75,14 +105,11 @@ export function saveToHistory(input: AnimeInput, result: GenerationResult): stri
 /**
  * Delete a history entry by ID
  */
-export function deleteHistoryEntry(id: string): boolean {
+export async function deleteHistoryEntry(id: string): Promise<boolean> {
   if (typeof window === 'undefined') return false;
 
   try {
-    const history = getHistory();
-    const filtered = history.filter(entry => entry.id !== id);
-
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(filtered));
+    await deleteHistoryEntryDB(id);
     return true;
   } catch (error) {
     console.error('Error deleting history entry:', error);
@@ -93,11 +120,11 @@ export function deleteHistoryEntry(id: string): boolean {
 /**
  * Clear all history
  */
-export function clearHistory(): boolean {
+export async function clearHistory(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
 
   try {
-    localStorage.removeItem(HISTORY_KEY);
+    await clearAllHistory();
     return true;
   } catch (error) {
     console.error('Error clearing history:', error);
@@ -108,15 +135,23 @@ export function clearHistory(): boolean {
 /**
  * Get history count
  */
-export function getHistoryCount(): number {
-  return getHistory().length;
+export async function getHistoryCount(): Promise<number> {
+  if (typeof window === 'undefined') return 0;
+
+  try {
+    await ensureMigration();
+    return await getHistoryCountDB();
+  } catch (error) {
+    console.error('Error getting history count:', error);
+    return 0;
+  }
 }
 
 /**
  * Search history by keyword
  */
-export function searchHistory(query: string): HistoryEntry[] {
-  const history = getHistory();
+export async function searchHistory(query: string): Promise<HistoryEntry[]> {
+  const history = await getHistory();
   const lowerQuery = query.toLowerCase();
 
   return history.filter(entry =>
@@ -132,16 +167,18 @@ export function searchHistory(query: string): HistoryEntry[] {
 
 /**
  * Get storage usage estimate (in KB)
+ * Note: IndexedDB doesn't provide easy size calculation, so this is approximate
  */
-export function getStorageSize(): number {
+export async function getStorageSize(): Promise<number> {
   if (typeof window === 'undefined') return 0;
 
   try {
-    const stored = localStorage.getItem(HISTORY_KEY);
-    if (!stored) return 0;
+    const history = await getHistory();
+    if (history.length === 0) return 0;
 
-    // Rough estimate: length * 2 (UTF-16) / 1024
-    return Math.round((stored.length * 2) / 1024);
+    // Rough estimate based on JSON size
+    const jsonSize = JSON.stringify(history).length;
+    return Math.round((jsonSize * 2) / 1024);
   } catch (error) {
     return 0;
   }

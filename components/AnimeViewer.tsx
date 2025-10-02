@@ -13,11 +13,12 @@ import { StoryView } from './StoryView';
 
 interface AnimeViewerProps {
   result: GenerationResult | null;
+  onRegenerateScene?: (sceneId: string, modifications?: string) => Promise<void>;
 }
 
 type ViewMode = 'slideshow' | 'comic' | 'grid' | 'story';
 
-export function AnimeViewer({ result }: AnimeViewerProps) {
+export function AnimeViewer({ result, onRegenerateScene }: AnimeViewerProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('slideshow');
 
   // Load saved preference
@@ -188,9 +189,9 @@ Quality Score: ${result.metadata.passed_verification}/${result.metadata.total_sc
 
       {/* View Content */}
       <div className="flex-1 overflow-hidden">
-        {viewMode === 'slideshow' && <SlideshowView result={result} />}
+        {viewMode === 'slideshow' && <SlideshowView result={result} onRegenerateScene={onRegenerateScene} />}
         {viewMode === 'comic' && <ComicBookView result={result} />}
-        {viewMode === 'grid' && <GridView result={result} />}
+        {viewMode === 'grid' && <GridView result={result} onRegenerateScene={onRegenerateScene} />}
         {viewMode === 'story' && <StoryView result={result} />}
       </div>
     </div>

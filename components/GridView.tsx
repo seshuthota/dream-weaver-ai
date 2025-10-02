@@ -1,15 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Download } from 'lucide-react';
+import { X, Download, RefreshCw } from 'lucide-react';
 import type { GenerationResult } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface GridViewProps {
   result: GenerationResult;
+  onRegenerateScene?: (sceneId: string, modifications?: string) => Promise<void>;
 }
 
-export function GridView({ result }: GridViewProps) {
+export function GridView({ result, onRegenerateScene }: GridViewProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const scenes = result.scenes.filter(s => s.image_url);
 
@@ -150,13 +151,24 @@ export function GridView({ result }: GridViewProps) {
                     ⭐ {(selectedScore * 100).toFixed(0)}%
                   </span>
                 </div>
-                <button
-                  onClick={() => downloadImage(selectedScene.image_url, selectedScene.scene_id)}
-                  className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  <Download className="w-4 h-4" />
-                  Download
-                </button>
+                <div className="flex items-center gap-2">
+                  {onRegenerateScene && (
+                    <button
+                      onClick={() => onRegenerateScene(selectedScene.scene_id)}
+                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Regenerate
+                    </button>
+                  )}
+                  <button
+                    onClick={() => downloadImage(selectedScene.image_url, selectedScene.scene_id)}
+                    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download
+                  </button>
+                </div>
               </div>
 
               {/* Scene Description */}
