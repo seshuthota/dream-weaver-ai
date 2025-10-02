@@ -9,7 +9,7 @@ import { HistoryPanel } from '@/components/HistoryPanel';
 import { ApiKeyInput } from '@/components/ApiKeyInput';
 import type { AnimeInput, GenerationResult, GenerationProgress, HistoryEntry } from '@/types';
 import { saveToHistory, getHistoryCount } from '@/lib/history';
-import { clientApiKey } from '@/lib/apiKeyManager';
+import { clientApiKey, clientModelSelection } from '@/lib/apiKeyManager';
 
 export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -42,12 +42,19 @@ export default function Home() {
         throw new Error('Please provide your OpenRouter API key');
       }
 
+      const modelSelection = clientModelSelection.get();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+      };
+      
+      if (modelSelection) {
+        headers['x-model-selection'] = JSON.stringify(modelSelection);
+      }
+
       const response = await fetch('/api/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-        },
+        headers,
         body: JSON.stringify(input),
       });
 
@@ -134,16 +141,23 @@ export default function Home() {
         throw new Error('Please provide your OpenRouter API key');
       }
 
+      const modelSelection = clientModelSelection.get();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+      };
+      
+      if (modelSelection) {
+        headers['x-model-selection'] = JSON.stringify(modelSelection);
+      }
+
       // Build a basic prompt from scene description
       const imagePrompt = scene.description || 'Anime scene';
       const negativePrompt = 'blurry, low quality, distorted';
 
       const response = await fetch('/api/regenerate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-        },
+        headers,
         body: JSON.stringify({
           scene: {
             id: scene.scene_id,

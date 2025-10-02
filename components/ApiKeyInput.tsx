@@ -1,20 +1,38 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Key, X, Check, AlertCircle, ExternalLink, ChevronDown } from 'lucide-react';
+import { Key, X, Check, AlertCircle, ExternalLink, ChevronDown, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { clientApiKey } from '@/lib/apiKeyManager';
+import { clientApiKey, clientModelSelection } from '@/lib/apiKeyManager';
+import { DEFAULT_MODELS } from '@/lib/config/models';
+import { ModelSelector } from './ModelSelector';
+import type { ModelSelection } from '@/types';
 
 export function ApiKeyInput() {
   const [hasKey, setHasKey] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [error, setError] = useState('');
+  const [showModelConfig, setShowModelConfig] = useState(false);
+  const [modelSelection, setModelSelection] = useState<ModelSelection>(DEFAULT_MODELS);
+  const [tempModelSelection, setTempModelSelection] = useState<ModelSelection>(DEFAULT_MODELS);
 
   useEffect(() => {
     const keyExists = clientApiKey.exists();
     setHasKey(keyExists);
+    
+    const savedSelection = clientModelSelection.get();
+    if (savedSelection) {
+      setModelSelection(savedSelection);
+      setTempModelSelection(savedSelection);
+    }
   }, []);
+
+  useEffect(() => {
+    if (showModelConfig) {
+      console.log('Model configuration panel opened');
+    }
+  }, [showModelConfig]);
 
   const handleSave = () => {
     if (!apiKey.trim()) {
@@ -40,6 +58,26 @@ export function ApiKeyInput() {
       setHasKey(false);
       setApiKey('');
     }
+  };
+
+  const handleSaveModels = () => {
+    clientModelSelection.set(tempModelSelection);
+    setModelSelection(tempModelSelection);
+    setShowModelConfig(false);
+  };
+
+  const handleCancelModels = () => {
+    setTempModelSelection(modelSelection);
+    setShowModelConfig(false);
+  };
+
+  const handleResetModels = () => {
+    setTempModelSelection(DEFAULT_MODELS);
+  };
+
+  const truncateModelId = (id: string, maxLength: number = 30) => {
+    if (id.length <= maxLength) return id;
+    return id.slice(0, maxLength) + '...';
   };
 
   // Close dropdown when clicking outside
@@ -143,7 +181,7 @@ export function ApiKeyInput() {
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
               <p className="text-blue-300 text-xs leading-relaxed">
                 <strong>🔒 Privacy:</strong> Your API key is stored locally in your browser and never sent to our servers. 
-                It's only used to make direct requests to OpenRouter on your behalf.
+                It&#39;s only used to make direct requests to OpenRouter on your behalf.
               </p>
             </div>
           </div>
@@ -151,7 +189,7 @@ export function ApiKeyInput() {
 
         {/* Key Status */}
         {hasKey && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center justify-between text-xs text-gray-400 bg-green-500/10 px-3 py-2 rounded-lg">
               <span>✓ Key saved in browser</span>
             </div>
@@ -172,6 +210,96 @@ export function ApiKeyInput() {
                 View Usage
                 <ExternalLink className="w-3 h-3" />
               </a>
+            </div>
+
+            {/* Model Configuration Section */}
+            <div className="border-t border-white/10 pt-3">
+              <div className="mb-2">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-white flex items-center gap-1">
+                    <Settings className="w-3 h-3" />
+                    Model Configuration
+                  </h4>
+                  <button
+                    onClick={() => setShowModelConfig(!showModelConfig)}
+                    className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                  >
+                    {showModelConfig ? 'Cancel' : 'Configure'}
+                  </button>
+                </div>
+                
+                {!showModelConfig && (
+                  <div className="space-y-1 text-xs">
+                    <div className="flex items-start gap-2">
+                      <span className="text-gray-500 min-w-[60px]">📝 Text:</span>
+                      <span className="text-gray-300 truncate" title={modelSelection.textModel}>
+                        {truncateModelId(modelSelection.textModel)}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-gray-500 min-w-[60px]">🎨 Image:</span>
+                      <span className="text-gray-400 text-xs">Gemini 2.5 Flash (fixed)</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-gray-500 min-w-[60px]">👁️ Verify:</span>
+                      <span className="text-gray-400 text-xs">Gemini 2.5 Flash (fixed)</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Model Configuration Form */}
+              {showModelConfig && (
+                <div className="space-y-4 mt-3">
+                  <ModelSelector
+                    label="Text Generation (Story & Prompts)"
+                    category="text"
+                    value={tempModelSelection.textModel}
+                    onChange={(modelId) => setTempModelSelection(prev => ({ ...prev, textModel: modelId }))}
+                    defaultValue={DEFAULT_MODELS.textModel}
+                  />
+
+                  {/* Fixed Image Generation Model */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      🎨 Image Generation
+                    </label>
+                    <div className="px-4 py-3 bg-black/20 border border-white/10 rounded-lg">
+                      <div className="font-medium text-gray-400 text-sm">Gemini 2.5 Flash Image (Preview)</div>
+                      <div className="text-xs text-gray-500 truncate">google/gemini-2.5-flash-image-preview</div>
+                      <div className="text-xs text-gray-500 mt-1">Fixed model for image generation</div>
+                    </div>
+                  </div>
+
+                  {/* Fixed Image Verification Model */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      👁️ Image Verification
+                    </label>
+                    <div className="px-4 py-3 bg-black/20 border border-white/10 rounded-lg">
+                      <div className="font-medium text-gray-400 text-sm">Gemini 2.5 Flash Image (Preview)</div>
+                      <div className="text-xs text-gray-500 truncate">google/gemini-2.5-flash-image-preview</div>
+                      <div className="text-xs text-gray-500 mt-1">Fixed model for image verification</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2">
+                    <button
+                      onClick={handleSaveModels}
+                      className="flex items-center gap-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-white text-sm transition-colors"
+                    >
+                      <Check className="w-4 h-4" />
+                      Save Configuration
+                    </button>
+                    <button
+                      onClick={handleResetModels}
+                      className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/20 rounded-lg text-white text-sm transition-colors"
+                    >
+                      Reset to Defaults
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -18,7 +18,8 @@ import type {
  */
 export async function generateCompleteStory(
   input: AnimeInput,
-  apiKey: string
+  apiKey: string,
+  model?: string
 ): Promise<{
   characters: Record<string, CharacterProfile>;
   script: string;
@@ -26,7 +27,8 @@ export async function generateCompleteStory(
 }> {
   const prompt = PROMPTS.completeStory({ input });
   const client = createOpenRouterClient(apiKey);
-  const response = await client.generateText(MODELS.story.model, prompt);
+  const modelToUse = model || MODELS.story.model;
+  const response = await client.generateText(modelToUse, prompt);
 
   try {
     const parsed = extractJSON<{
@@ -314,18 +316,20 @@ Make the prompt natural-sounding but extremely detailed and specific. Include al
 
 export async function generateImage(
   prompt: string | ImagePrompt,
-  apiKey: string
+  apiKey: string,
+  model?: string
 ): Promise<{ success: boolean; imageData?: string; error?: string }> {
   const client = createOpenRouterClient(apiKey);
+  const modelToUse = model || MODELS.image.model;
 
   // Handle both string prompts and ImagePrompt objects
   if (typeof prompt === 'string') {
-    return await client.generateImage(MODELS.image.model, prompt);
+    return await client.generateImage(modelToUse, prompt);
   }
 
   // Use ImagePrompt with negative prompt support
   return await client.generateImage(
-    MODELS.image.model,
+    modelToUse,
     prompt.positive_prompt,
     prompt.negative_prompt
   );
@@ -335,16 +339,18 @@ export async function verifyImage(
   imageData: string,
   scene: Scene,
   characters: Record<string, CharacterProfile>,
-  apiKey: string
+  apiKey: string,
+  model?: string
 ): Promise<VerificationResult> {
   // Use cached character descriptions to reduce token usage
   const charDescriptions = getCharacterDescriptions(scene.characters_present, characters);
 
   const verificationPrompt = PROMPTS.verification({ scene, characters });
   const client = createOpenRouterClient(apiKey);
+  const modelToUse = model || MODELS.verification.model;
 
   try {
-    const response = await client.analyzeImage(MODELS.verification.model, verificationPrompt, imageData);
+    const response = await client.analyzeImage(modelToUse, verificationPrompt, imageData);
 
     if (!response || typeof response !== 'string') {
       throw new Error('Invalid response from verification API');
