@@ -317,10 +317,35 @@ Make the prompt natural-sounding but extremely detailed and specific. Include al
 export async function generateImage(
   prompt: string | ImagePrompt,
   apiKey: string,
-  model?: string
+  model?: string,
+  provider?: 'openrouter' | 'pollinations'
 ): Promise<{ success: boolean; imageData?: string; error?: string }> {
-  const client = createOpenRouterClient(apiKey);
   const modelToUse = model || MODELS.image.model;
+  
+  // Check if using Pollinations (free provider)
+  if (provider === 'pollinations' || modelToUse.startsWith('pollinations/')) {
+    const { pollinationsClient } = await import('@/lib/pollinationsClient');
+    
+    // Extract model type from modelId (e.g., 'pollinations/flux-anime' -> 'flux-anime')
+    const pollinationsModel = modelToUse.replace('pollinations/', '') as any;
+    
+    // Get prompt text
+    const promptText = typeof prompt === 'string' ? prompt : prompt.positive_prompt;
+    
+    // Generate with Pollinations
+    const result = await pollinationsClient.generateImageAsBase64(promptText, {
+      model: pollinationsModel,
+      width: 1024,
+      height: 1024,
+      enhance: true,
+      nologo: true,
+    });
+    
+    return result;
+  }
+  
+  // Use OpenRouter (paid)
+  const client = createOpenRouterClient(apiKey);
 
   // Handle both string prompts and ImagePrompt objects
   if (typeof prompt === 'string') {

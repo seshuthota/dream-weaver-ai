@@ -238,7 +238,11 @@ export function ApiKeyInput() {
                     </div>
                     <div className="flex items-start gap-2">
                       <span className="text-gray-500 min-w-[60px]">🎨 Image:</span>
-                      <span className="text-gray-400 text-xs">Gemini 2.5 Flash (fixed)</span>
+                      <span className="text-gray-300 text-xs">
+                        {modelSelection.imageProvider === 'pollinations' 
+                          ? 'Pollinations Flux Anime (FREE)' 
+                          : 'Gemini 2.5 Flash'}
+                      </span>
                     </div>
                     <div className="flex items-start gap-2">
                       <span className="text-gray-500 min-w-[60px]">👁️ Verify:</span>
@@ -259,15 +263,68 @@ export function ApiKeyInput() {
                     defaultValue={DEFAULT_MODELS.textModel}
                   />
 
-                  {/* Fixed Image Generation Model */}
+                  {/* Image Generation Provider Selection */}
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                      🎨 Image Generation
+                      🎨 Image Generation Provider
                     </label>
-                    <div className="px-4 py-3 bg-black/20 border border-white/10 rounded-lg">
-                      <div className="font-medium text-gray-400 text-sm">Gemini 2.5 Flash Image (Preview)</div>
-                      <div className="text-xs text-gray-500 truncate">google/gemini-2.5-flash-image-preview</div>
-                      <div className="text-xs text-gray-500 mt-1">Fixed model for image generation</div>
+                    <div className="space-y-2">
+                      {/* OpenRouter Option */}
+                      <button
+                        type="button"
+                        onClick={() => setTempModelSelection(prev => ({ 
+                          ...prev, 
+                          imageProvider: 'openrouter',
+                          imageModel: 'google/gemini-2.5-flash-image-preview'
+                        }))}
+                        className={cn(
+                          "w-full px-4 py-3 rounded-lg border transition-all text-left",
+                          tempModelSelection.imageProvider !== 'pollinations'
+                            ? "bg-purple-500/20 border-purple-500/50"
+                            : "bg-black/20 border-white/10 hover:bg-black/30"
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-white text-sm">OpenRouter (Paid)</div>
+                            <div className="text-xs text-gray-400 mt-0.5">Gemini 2.5 Flash Image Preview</div>
+                            <div className="text-xs text-gray-500 mt-1">High quality, costs $0.0002 per image</div>
+                          </div>
+                          {tempModelSelection.imageProvider !== 'pollinations' && (
+                            <Check className="w-4 h-4 text-purple-400" />
+                          )}
+                        </div>
+                      </button>
+
+                      {/* Pollinations Option */}
+                      <button
+                        type="button"
+                        onClick={() => setTempModelSelection(prev => ({ 
+                          ...prev, 
+                          imageProvider: 'pollinations',
+                          imageModel: 'pollinations/flux-anime'
+                        }))}
+                        className={cn(
+                          "w-full px-4 py-3 rounded-lg border transition-all text-left",
+                          tempModelSelection.imageProvider === 'pollinations'
+                            ? "bg-green-500/20 border-green-500/50"
+                            : "bg-black/20 border-white/10 hover:bg-black/30"
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-white text-sm flex items-center gap-2">
+                              Pollinations.ai (FREE) 
+                              <span className="px-2 py-0.5 bg-green-500/30 text-green-300 text-xs rounded">Recommended</span>
+                            </div>
+                            <div className="text-xs text-gray-400 mt-0.5">Flux Anime Model</div>
+                            <div className="text-xs text-gray-500 mt-1">Completely free, anime-optimized</div>
+                          </div>
+                          {tempModelSelection.imageProvider === 'pollinations' && (
+                            <Check className="w-4 h-4 text-green-400" />
+                          )}
+                        </div>
+                      </button>
                     </div>
                   </div>
 

@@ -2,6 +2,7 @@ import type { ModelSelection } from '@/types';
 
 export const AI_PROVIDERS = {
   OPENROUTER: 'openrouter',
+  POLLINATIONS: 'pollinations',
   // Future: Add OPENAI, ANTHROPIC, etc.
 } as const;
 
@@ -15,9 +16,29 @@ export interface ModelConfig {
 
 export const DEFAULT_MODELS: ModelSelection = {
   textModel: 'x-ai/grok-4-fast:free',
-  imageModel: 'google/gemini-2.5-flash-image-preview',
+  imageModel: 'pollinations/flux-anime', // Default to free provider
   verificationModel: 'google/gemini-2.5-flash-image-preview',
+  imageProvider: 'pollinations', // Default to free
 };
+
+// Pollinations.ai models (free alternative)
+export const POLLINATIONS_MODELS = {
+  'pollinations/flux-anime': {
+    provider: AI_PROVIDERS.POLLINATIONS,
+    name: 'Pollinations Flux Anime (FREE)',
+    description: 'Free anime-style image generation',
+  },
+  'pollinations/flux': {
+    provider: AI_PROVIDERS.POLLINATIONS,
+    name: 'Pollinations Flux (FREE)',
+    description: 'Free high-quality image generation',
+  },
+  'pollinations/flux-realism': {
+    provider: AI_PROVIDERS.POLLINATIONS,
+    name: 'Pollinations Flux Realism (FREE)',
+    description: 'Free photorealistic image generation',
+  },
+} as const;
 
 export const MODELS: Record<string, ModelConfig> = {
   story: {
