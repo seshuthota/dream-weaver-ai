@@ -15,25 +15,53 @@ export class OpenRouterClient {
       baseURL: API_CONFIG.openrouter.baseUrl,
       apiKey: this.apiKey,
       defaultHeaders: API_CONFIG.openrouter.defaultHeaders,
+      timeout: 120000, // 120 second timeout (increased from default 60s)
+      maxRetries: 2, // Retry failed requests up to 2 times
     });
   }
 
   async generateText(model: string, prompt: string, temperature: number = 0.7, maxTokens?: number): Promise<string> {
-    const response = await this.client.chat.completions.create({
-      model,
-      messages: [{ role: 'user', content: prompt }],
-      temperature,
-      max_tokens: maxTokens || 8000, // Increased default from 4000 to 8000 for longer responses
-    });
+    try {
+      const response = await this.client.chat.completions.create({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature,
+        max_tokens: maxTokens || 8000, // Increased default from 4000 to 8000 for longer responses
+      });
 
-    const content = response.choices[0]?.message?.content || '';
-    
-    // Check if response was truncated
-    if (response.choices[0]?.finish_reason === 'length') {
-      console.warn('Response was truncated due to max_tokens limit. Consider increasing maxTokens parameter.');
+      const content = response.choices[0]?.message?.content || '';
+      
+      // Check if response was truncated
+      if (response.choices[0]?.finish_reason === 'length') {
+        console.warn('Response was truncated due to max_tokens limit. Consider increasing maxTokens parameter.');
+      }
+      
+      return content;
+    } catch (error: any) {
+      // Enhanced error logging
+      console.error('OpenRouter API Error:', {
+        model,
+        error: error.message,
+        status: error.status,
+        type: error.type,
+        code: error.code,
+      });
+      
+      // Provide more helpful error messages
+      if (error.status === 401) {
+        throw new Error('Invalid API key. Please check your OpenRouter API key.');
+      } else if (error.status === 402) {
+        throw new Error('Insufficient credits. Please add credits to your OpenRouter account.');
+      } else if (error.status === 429) {
+        throw new Error('Rate limit exceeded. Please wait a moment and try again.');
+      } else if (error.message?.includes('JSON')) {
+        throw new Error('Invalid response from OpenRouter API. The server may be experiencing issues. Please try again.');
+      } else if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') {
+        throw new Error('Connection timeout. Please check your internet connection and try again.');
+      }
+      
+      throw new Error(`OpenRouter API error: ${error.message || 'Unknown error'}`);
     }
-    
-    return content;
   }
 
   async generateImage(
@@ -94,24 +122,40 @@ export class OpenRouterClient {
   }
 
   async analyzeImage(model: string, prompt: string, imageData: string): Promise<string> {
-    const response = await this.client.chat.completions.create({
-      model,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            {
-              type: 'image_url',
-              image_url: { url: imageData }
-            }
-          ]
-        }
-      ],
-      temperature: 0.7,
-    });
+    try {
+      const response = await this.client.chat.completions.create({
+        model,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              {
+                type: 'image_url',
+                image_url: { url: imageData }
+              }
+            ]
+          }
+        ],
+        temperature: 0.7,
+      });
 
-    return response.choices[0]?.message?.content || '';
+      return response.choices[0]?.message?.content || '';
+    } catch (error: any) {
+      console.error('OpenRouter Vision API Error:', {
+        model,
+        error: error.message,
+        status: error.status,
+      });
+      
+      if (error.status === 401) {
+        throw new Error('Invalid API key for vision model.');
+      } else if (error.status === 402) {
+        throw new Error('Insufficient credits for vision model.');
+      }
+      
+      throw new Error(`Vision API error: ${error.message || 'Unknown error'}`);
+    }
   }
 }
 
