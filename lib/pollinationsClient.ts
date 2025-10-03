@@ -101,13 +101,27 @@ export class PollinationsClient {
         throw new Error(`Failed to fetch image: ${response.status}`);
       }
 
-      const blob = await response.blob();
-      const base64 = await this.blobToBase64(blob);
-
-      return {
-        success: true,
-        imageData: base64,
-      };
+      // Use Node.js Buffer for server-side or Blob for client-side
+      if (typeof window === 'undefined') {
+        // Server-side: Use Node.js Buffer
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const base64 = `data:image/png;base64,${buffer.toString('base64')}`;
+        
+        return {
+          success: true,
+          imageData: base64,
+        };
+      } else {
+        // Client-side: Use FileReader with Blob
+        const blob = await response.blob();
+        const base64 = await this.blobToBase64(blob);
+        
+        return {
+          success: true,
+          imageData: base64,
+        };
+      }
     } catch (error) {
       console.error('Pollinations base64 conversion error:', error);
       return {
