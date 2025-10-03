@@ -138,6 +138,7 @@ export interface ModelSelection {
   textModel: string;
   imageModel: string;
   verificationModel: string;
+  imageProvider?: 'openrouter' | 'pollinations'; // Optional: specify provider
 }
 
 export interface ModelsApiResponse {

@@ -47,8 +47,50 @@ export function formatTime(seconds: number): string {
 }
 
 /**
+ * Attempt to repair common JSON issues
+ */
+function repairJSON(jsonStr: string): string {
+  let repaired = jsonStr;
+  
+  // Remove trailing commas before closing braces/brackets
+  repaired = repaired.replace(/,(\s*[}\]])/g, '$1');
+  
+  // Try to close unclosed strings by finding unterminated quotes
+  const quoteCount = (repaired.match(/"/g) || []).length;
+  if (quoteCount % 2 !== 0) {
+    // Odd number of quotes - try to close the last one
+    const lastQuoteIndex = repaired.lastIndexOf('"');
+    // Look for the next comma, brace, or bracket after the unclosed quote
+    const nextDelimiter = repaired.slice(lastQuoteIndex + 1).search(/[,\}\]]/);
+    if (nextDelimiter !== -1) {
+      const insertPos = lastQuoteIndex + 1 + nextDelimiter;
+      repaired = repaired.slice(0, insertPos) + '"' + repaired.slice(insertPos);
+    }
+  }
+  
+  // Try to close unclosed objects/arrays
+  const openBraces = (repaired.match(/\{/g) || []).length;
+  const closeBraces = (repaired.match(/\}/g) || []).length;
+  const openBrackets = (repaired.match(/\[/g) || []).length;
+  const closeBrackets = (repaired.match(/\]/g) || []).length;
+  
+  // Add missing closing braces
+  for (let i = 0; i < openBraces - closeBraces; i++) {
+    repaired += '}';
+  }
+  
+  // Add missing closing brackets
+  for (let i = 0; i < openBrackets - closeBrackets; i++) {
+    repaired += ']';
+  }
+  
+  return repaired;
+}
+
+/**
  * Extract and parse JSON from AI model responses
  * Handles various formats: ```json, ```, plain JSON, and embedded JSON
+ * Includes automatic repair for common JSON issues
  * @param text - Raw text response from AI model
  * @returns Parsed JSON object
  * @throws Error if JSON cannot be extracted or parsed
@@ -81,12 +123,30 @@ export function extractJSON<T = any>(text: string): T {
     }
   }
 
+  // First attempt: parse as-is
   try {
     return JSON.parse(cleanText);
-  } catch (error) {
-    throw new Error(
-      `Failed to parse JSON: ${error instanceof Error ? error.message : 'Unknown error'}. ` +
-      `Text preview: ${cleanText.substring(0, 200)}`
-    );
+  } catch (firstError) {
+    // Second attempt: try to repair common issues
+    console.warn('Initial JSON parse failed, attempting repair...', firstError);
+    
+    try {
+      const repairedText = repairJSON(cleanText);
+      const result = JSON.parse(repairedText);
+      console.log('Successfully parsed JSON after repair');
+      return result;
+    } catch (repairError) {
+      // Both attempts failed, throw detailed error
+      const errorMsg = firstError instanceof Error ? firstError.message : 'Unknown error';
+      const preview = cleanText.substring(0, 500);
+      const endPreview = cleanText.length > 500 ? cleanText.substring(cleanText.length - 200) : '';
+      
+      throw new Error(
+        `Failed to parse JSON: ${errorMsg}. ` +
+        `Response length: ${cleanText.length} chars. ` +
+        `Start preview: ${preview}... ` +
+        (endPreview ? `End preview: ...${endPreview}` : '')
+      );
+    }
   }
 }

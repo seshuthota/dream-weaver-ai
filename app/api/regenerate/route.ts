@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
             modifiedPrompt.positive_prompt += ', ultra detailed, 8k masterpiece, alternative angle, professional lighting';
           }
 
-          imageResult = await generateImage(modifiedPrompt, apiKey, activeModels.imageModel);
+          imageResult = await generateImage(modifiedPrompt, apiKey, activeModels.imageModel, modelSelection?.imageProvider);
           if (imageResult.success) break;
           attempts++;
 

@@ -28,7 +28,9 @@ export async function generateCompleteStory(
   const prompt = PROMPTS.completeStory({ input });
   const client = createOpenRouterClient(apiKey);
   const modelToUse = model || MODELS.story.model;
-  const response = await client.generateText(modelToUse, prompt);
+  
+  // Use higher max_tokens for complete story generation (up to 16K for complex stories)
+  const response = await client.generateText(modelToUse, prompt, 0.7, 16000);
 
   try {
     const parsed = extractJSON<{
@@ -39,7 +41,12 @@ export async function generateCompleteStory(
 
     // Validate structure
     if (!parsed.characters || !parsed.script || !parsed.scenes) {
-      throw new Error('Invalid response structure');
+      throw new Error('Invalid response structure: missing required fields');
+    }
+    
+    // Validate scenes array
+    if (!Array.isArray(parsed.scenes) || parsed.scenes.length === 0) {
+      throw new Error('Invalid response structure: scenes must be a non-empty array');
     }
 
     return {
@@ -317,10 +324,35 @@ Make the prompt natural-sounding but extremely detailed and specific. Include al
 export async function generateImage(
   prompt: string | ImagePrompt,
   apiKey: string,
-  model?: string
+  model?: string,
+  provider?: 'openrouter' | 'pollinations'
 ): Promise<{ success: boolean; imageData?: string; error?: string }> {
-  const client = createOpenRouterClient(apiKey);
   const modelToUse = model || MODELS.image.model;
+  
+  // Check if using Pollinations (free provider)
+  if (provider === 'pollinations' || modelToUse.startsWith('pollinations/')) {
+    const { pollinationsClient } = await import('@/lib/pollinationsClient');
+    
+    // Extract model type from modelId (e.g., 'pollinations/flux-anime' -> 'flux-anime')
+    const pollinationsModel = modelToUse.replace('pollinations/', '') as any;
+    
+    // Get prompt text
+    const promptText = typeof prompt === 'string' ? prompt : prompt.positive_prompt;
+    
+    // Generate with Pollinations
+    const result = await pollinationsClient.generateImageAsBase64(promptText, {
+      model: pollinationsModel,
+      width: 1024,
+      height: 1024,
+      enhance: true,
+      nologo: true,
+    });
+    
+    return result;
+  }
+  
+  // Use OpenRouter (paid)
+  const client = createOpenRouterClient(apiKey);
 
   // Handle both string prompts and ImagePrompt objects
   if (typeof prompt === 'string') {

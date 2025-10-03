@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Check, ChevronDown, Search, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useOpenRouterModels } from '@/hooks/useOpenRouterModels';
 import { formatModelPrice, formatContextLength, type ModelCategory } from '@/lib/modelCategories';
-import type { OpenRouterModel } from '@/types';
+import { createPortal } from 'react-dom';
 
 interface ModelSelectorProps {
   label: string;
@@ -23,17 +23,47 @@ export function ModelSelector({
   defaultValue 
 }: ModelSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [portalEl, setPortalEl] = useState<HTMLElement | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number }>({
+    top: 0,
+    left: 0,
+    width: 0,
+  });
   
   const { models, loading, error, searchQuery, setSearchQuery, refetch } = useOpenRouterModels(category);
 
   const selectedModel = models.find(m => m.id === value);
 
   useEffect(() => {
+    setPortalEl(document.body);
+  }, []);
+
+  const updateDropdownPosition = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    setDropdownPosition({
+      top: rect.bottom + window.scrollY + 8,
+      left: rect.left + window.scrollX,
+      width: rect.width,
+    });
+  }, []);
+
+  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
+      const target = e.target as Node;
+      if (
+        containerRef.current?.contains(target) ||
+        menuRef.current?.contains(target)
+      ) {
+        return;
       }
+
+      setIsOpen(false);
     };
 
     if (isOpen) {
@@ -41,6 +71,19 @@ export function ModelSelector({
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    updateDropdownPosition();
+    window.addEventListener('scroll', updateDropdownPosition, true);
+    window.addEventListener('resize', updateDropdownPosition);
+
+    return () => {
+      window.removeEventListener('scroll', updateDropdownPosition, true);
+      window.removeEventListener('resize', updateDropdownPosition);
+    };
+  }, [isOpen, updateDropdownPosition]);
 
   const handleSelect = (modelId: string) => {
     onChange(modelId);
@@ -61,9 +104,9 @@ export function ModelSelector({
     <div
       className={cn(
         "relative",
-        isOpen ? "z-50" : "z-10"
+        isOpen ? "z-[9998]" : "z-10"
       )}
-      ref={dropdownRef}
+      ref={containerRef}
     >
       <label className="block text-sm font-medium text-gray-300 mb-2">
         {getCategoryIcon(category)} {label}
@@ -72,6 +115,7 @@ export function ModelSelector({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
+        ref={triggerRef}
         className={cn(
           "w-full px-4 py-3 bg-black/30 border border-white/20 rounded-lg",
           "text-left text-white hover:bg-black/40 transition-colors",
@@ -92,8 +136,17 @@ export function ModelSelector({
         <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} />
       </button>
 
-      {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-white/20 rounded-lg shadow-2xl z-[100] max-h-96 flex flex-col">
+      {portalEl && isOpen && createPortal(
+        <div
+          ref={menuRef}
+          style={{
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            width: dropdownPosition.width,
+            zIndex: 2147483647,
+          }}
+          className="fixed bg-gray-900 border border-white/20 rounded-lg shadow-2xl max-h-96 flex flex-col"
+        >
           <div className="p-3 border-b border-white/10">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -198,7 +251,7 @@ export function ModelSelector({
             )}
           </div>
         </div>
-      )}
+      , portalEl)}
     </div>
   );
 }

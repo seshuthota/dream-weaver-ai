@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
               console.log(`Retry ${attempts} for ${scene.id}: Adding angle variation and quality keywords`);
             }
 
-            imageResult = await generateImage(modifiedPrompt, apiKey, activeModels.imageModel);
+            imageResult = await generateImage(modifiedPrompt, apiKey, activeModels.imageModel, modelSelection?.imageProvider);
             if (imageResult.success) break;
             attempts++;
           }
