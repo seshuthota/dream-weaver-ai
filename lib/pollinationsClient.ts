@@ -128,7 +128,7 @@ export class PollinationsClient {
         console.log(`Pollinations image generated: ${buffer.length} bytes, type: ${contentType}`);
         
         if (buffer.length < 1000) {
-          console.warn('Warning: Image size is suspiciously small:', buffer.length, 'bytes');
+          throw new Error(`Received suspiciously small image (${buffer.length} bytes). This may indicate a generation error.`);
         }
         
         return {
