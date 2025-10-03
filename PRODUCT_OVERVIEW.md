@@ -207,7 +207,7 @@ Built with enterprise-grade technologies, optimized for performance, and deploye
 | Feature | Status | Quality Presets | Model Config |
 |---------|--------|-----------------|--------------|
 | Story Generation | ✅ Implemented | ✅ 3 Levels | ✅ User Choice |
-| Image Generation | ✅ Implemented | ✅ 3 Levels | 🔒 Fixed (Gemini) |
+| Image Generation | ✅ Implemented | ✅ 3 Levels | ✅ User Choice |
 | Image Verification | ✅ Implemented | ✅ Optional | 🔒 Fixed (Gemini) |
 | Scene Regeneration | ✅ Implemented | ✅ Inherited | ✅ User Choice |
 | History Management | ✅ Implemented | N/A | N/A |
