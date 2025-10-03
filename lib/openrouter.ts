@@ -18,15 +18,22 @@ export class OpenRouterClient {
     });
   }
 
-  async generateText(model: string, prompt: string, temperature: number = 0.7): Promise<string> {
+  async generateText(model: string, prompt: string, temperature: number = 0.7, maxTokens?: number): Promise<string> {
     const response = await this.client.chat.completions.create({
       model,
       messages: [{ role: 'user', content: prompt }],
       temperature,
-      max_tokens: 4000,
+      max_tokens: maxTokens || 8000, // Increased default from 4000 to 8000 for longer responses
     });
 
-    return response.choices[0]?.message?.content || '';
+    const content = response.choices[0]?.message?.content || '';
+    
+    // Check if response was truncated
+    if (response.choices[0]?.finish_reason === 'length') {
+      console.warn('Response was truncated due to max_tokens limit. Consider increasing maxTokens parameter.');
+    }
+    
+    return content;
   }
 
   async generateImage(

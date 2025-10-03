@@ -28,7 +28,9 @@ export async function generateCompleteStory(
   const prompt = PROMPTS.completeStory({ input });
   const client = createOpenRouterClient(apiKey);
   const modelToUse = model || MODELS.story.model;
-  const response = await client.generateText(modelToUse, prompt);
+  
+  // Use higher max_tokens for complete story generation (up to 16K for complex stories)
+  const response = await client.generateText(modelToUse, prompt, 0.7, 16000);
 
   try {
     const parsed = extractJSON<{
@@ -39,7 +41,12 @@ export async function generateCompleteStory(
 
     // Validate structure
     if (!parsed.characters || !parsed.script || !parsed.scenes) {
-      throw new Error('Invalid response structure');
+      throw new Error('Invalid response structure: missing required fields');
+    }
+    
+    // Validate scenes array
+    if (!Array.isArray(parsed.scenes) || parsed.scenes.length === 0) {
+      throw new Error('Invalid response structure: scenes must be a non-empty array');
     }
 
     return {
