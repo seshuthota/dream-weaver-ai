@@ -52,14 +52,9 @@ export class PollinationsClient {
         model: finalConfig.model!,
       });
 
-      const imageUrl = `${this.baseUrl}/${cleanPrompt}?${params.toString()}`;
-
-      // Verify image is accessible by making a HEAD request
-      const response = await fetch(imageUrl, { method: 'HEAD' });
+      const imageUrl = `${this.baseUrl}/${encodeURIComponent(cleanPrompt)}?${params.toString()}`;
       
-      if (!response.ok) {
-        throw new Error(`Failed to generate image: ${response.status}`);
-      }
+      console.log('Pollinations URL:', imageUrl);
 
       return {
         success: true,
@@ -95,16 +90,35 @@ export class PollinationsClient {
       }
 
       // Fetch the image and convert to base64
-      const response = await fetch(result.imageUrl);
+      console.log('Fetching Pollinations image from:', result.imageUrl);
+      
+      // Pollinations may take time to generate, so use longer timeout
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+      
+      const response = await fetch(result.imageUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'image/*',
+        },
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeout);
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status}`);
+        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
       }
 
       // Use Node.js Buffer for server-side or Blob for client-side
       if (typeof window === 'undefined') {
         // Server-side: Use Node.js Buffer
         const arrayBuffer = await response.arrayBuffer();
+        
+        if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+          throw new Error('Received empty image data from Pollinations');
+        }
+        
         const buffer = Buffer.from(arrayBuffer);
         
         // Detect image type from Content-Type header (Pollinations returns JPEG)
@@ -113,6 +127,10 @@ export class PollinationsClient {
         
         console.log(`Pollinations image generated: ${buffer.length} bytes, type: ${contentType}`);
         
+        if (buffer.length < 1000) {
+          console.warn('Warning: Image size is suspiciously small:', buffer.length, 'bytes');
+        }
+        
         return {
           success: true,
           imageData: base64,
@@ -120,6 +138,11 @@ export class PollinationsClient {
       } else {
         // Client-side: Use FileReader with Blob
         const blob = await response.blob();
+        
+        if (!blob || blob.size === 0) {
+          throw new Error('Received empty image blob from Pollinations');
+        }
+        
         const base64 = await this.blobToBase64(blob);
         
         return {
@@ -138,12 +161,13 @@ export class PollinationsClient {
 
   /**
    * Clean prompt for URL encoding
-   * Removes spaces and special characters, keeps alphanumeric
+   * Removes special characters, keeps spaces and alphanumeric
    */
   private cleanPrompt(prompt: string): string {
     return prompt
-      .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special chars
-      .replace(/\s+/g, '') // Remove all spaces
+      .replace(/[^a-zA-Z0-9\s,.-]/g, '') // Remove special chars, keep spaces, commas, periods, hyphens
+      .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
+      .trim() // Remove leading/trailing spaces
       .substring(0, 500); // Limit length for URL
   }
 
