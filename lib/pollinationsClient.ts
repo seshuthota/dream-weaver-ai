@@ -106,7 +106,12 @@ export class PollinationsClient {
         // Server-side: Use Node.js Buffer
         const arrayBuffer = await response.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
-        const base64 = `data:image/png;base64,${buffer.toString('base64')}`;
+        
+        // Detect image type from Content-Type header (Pollinations returns JPEG)
+        const contentType = response.headers.get('content-type') || 'image/jpeg';
+        const base64 = `data:${contentType};base64,${buffer.toString('base64')}`;
+        
+        console.log(`Pollinations image generated: ${buffer.length} bytes, type: ${contentType}`);
         
         return {
           success: true,
